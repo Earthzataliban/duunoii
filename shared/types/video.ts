@@ -93,3 +93,21 @@ export interface VideoSearchQuery {
   page?: number;
   limit?: number;
 }
+
+export interface VideoUploadResponse {
+  id: string;
+  title: string;
+  filename: string;
+  originalName: string;
+  size: number;
+  status: VideoStatus;
+  uploaderId: string;
+  createdAt: Date;
+}
+
+export interface UploadProgressEvent {
+  videoId: string;
+  stage: 'upload' | 'processing' | 'complete' | 'error';
+  progress: number; // 0-100
+  message?: string;
+}

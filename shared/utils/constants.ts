@@ -33,7 +33,11 @@ export const API_ROUTES = {
   VIDEOS: {
     LIST: '/videos',
     UPLOAD: '/videos/upload',
+    MY_VIDEOS: '/videos/my-videos',
     DETAIL: (id: string) => `/videos/${id}`,
+    UPDATE: (id: string) => `/videos/${id}`,
+    DELETE: (id: string) => `/videos/${id}`,
+    VIEW: (id: string) => `/videos/${id}/view`,
     STREAM: (id: string) => `/videos/${id}/stream`,
     THUMBNAIL: (id: string) => `/videos/${id}/thumbnail`,
     COMMENTS: (id: string) => `/videos/${id}/comments`,

@@ -1,0 +1,43 @@
+# Test video upload functionality
+# First, let's login to get a JWT token
+
+POST http://localhost:8080/auth/login
+Content-Type: application/json
+
+{
+  "email": "testuser@example.com",
+  "password": "password123"
+}
+
+###
+
+# Upload a video (you'll need to replace the token with the one from login)
+POST http://localhost:8080/videos/upload
+Authorization: Bearer YOUR_JWT_TOKEN_HERE
+Content-Type: multipart/form-data; boundary=WebKitFormBoundary7MA4YWxkTrZu0gW
+
+--WebKitFormBoundary7MA4YWxkTrZu0gW
+Content-Disposition: form-data; name="title"
+
+Test Video Upload
+--WebKitFormBoundary7MA4YWxkTrZu0gW
+Content-Disposition: form-data; name="description"
+
+This is a test video upload
+--WebKitFormBoundary7MA4YWxkTrZu0gW
+Content-Disposition: form-data; name="video"; filename="test.mp4"
+Content-Type: video/mp4
+
+(binary content would go here)
+--WebKitFormBoundary7MA4YWxkTrZu0gW--
+
+###
+
+# Get all videos
+GET http://localhost:8080/videos
+
+###
+
+# Get my videos (requires auth)
+GET http://localhost:8080/videos/my-videos
+Authorization: Bearer YOUR_JWT_TOKEN_HERE

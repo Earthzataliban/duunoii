@@ -27,4 +27,4 @@ async function bootstrap() {
     `🚀 API Server running on http://localhost:${process.env.PORT ?? 8080}`,
   );
 }
-bootstrap();
+void bootstrap();
