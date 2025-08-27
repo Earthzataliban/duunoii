@@ -4,12 +4,15 @@ A budget-friendly video platform similar to YouTube/Netflix, built with NestJS a
 
 ## Tech Stack
 
-- **Backend**: NestJS with TypeScript
-- **Frontend**: Next.js with TypeScript & Tailwind CSS
-- **Database**: PostgreSQL + Redis
-- **Video Processing**: FFmpeg
+- **Backend**: NestJS 10.x with TypeScript 5.x
+- **Frontend**: Next.js 14.x with TypeScript & Tailwind CSS 3.x
+- **Database**: PostgreSQL 15.x + Prisma 5.x + Redis 7.x
+- **Authentication**: JWT with bcryptjs
+- **Video Processing**: FFmpeg 6.0+
 - **Storage**: Local filesystem (budget-friendly)
-- **CDN**: Cloudflare Free Plan
+- **Testing**: Jest + Supertest
+- **Code Quality**: ESLint + Prettier
+- **Infrastructure**: Docker + Docker Compose
 
 ## Quick Start
 
@@ -32,7 +35,7 @@ npm run docker:dev
 npm run dev
 ```
 
-The API will be available at `http://localhost:3001` and the web app at `http://localhost:3000`.
+The API will be available at `http://localhost:8080` and the web app at `http://localhost:3000`.
 
 ## Development Commands
 
