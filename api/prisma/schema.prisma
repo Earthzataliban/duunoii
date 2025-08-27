@@ -1,0 +1,185 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id          String   @id @default(cuid())
+  email       String   @unique
+  username    String   @unique
+  password    String
+  displayName String?
+  firstName   String?
+  lastName    String?
+  avatar      String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  videos      Video[]
+  comments    Comment[]
+  likes       Like[]
+  playlists   Playlist[]
+  viewHistory ViewHistory[]
+  subscribers Subscription[] @relation("UserSubscribers")
+  subscriptions Subscription[] @relation("UserSubscriptions")
+
+  @@map("users")
+}
+
+model Video {
+  id          String      @id @default(cuid())
+  title       String
+  description String?
+  filename    String
+  originalName String
+  mimeType    String
+  size        Int
+  duration    Int?        // in seconds
+  status      VideoStatus @default(PROCESSING)
+  thumbnailUrl String?
+  views       Int         @default(0)
+  uploaderId  String
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  // Relations
+  uploader    User          @relation(fields: [uploaderId], references: [id], onDelete: Cascade)
+  videoFiles  VideoFile[]
+  comments    Comment[]
+  likes       Like[]
+  playlistItems PlaylistItem[]
+  viewHistory ViewHistory[]
+
+  @@map("videos")
+}
+
+model VideoFile {
+  id         String @id @default(cuid())
+  videoId    String
+  resolution String // "360p", "720p", "1080p", "4K"
+  filePath   String
+  fileSize   Int
+  bitrate    Int?
+  createdAt  DateTime @default(now())
+
+  // Relations
+  video Video @relation(fields: [videoId], references: [id], onDelete: Cascade)
+
+  @@unique([videoId, resolution])
+  @@map("video_files")
+}
+
+model Comment {
+  id        String   @id @default(cuid())
+  content   String
+  videoId   String
+  userId    String
+  parentId  String?  // for nested comments
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  video    Video     @relation(fields: [videoId], references: [id], onDelete: Cascade)
+  user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  parent   Comment?  @relation("CommentReplies", fields: [parentId], references: [id])
+  replies  Comment[] @relation("CommentReplies")
+
+  @@map("comments")
+}
+
+model Like {
+  id      String   @id @default(cuid())
+  videoId String
+  userId  String
+  type    LikeType
+  createdAt DateTime @default(now())
+
+  // Relations
+  video Video @relation(fields: [videoId], references: [id], onDelete: Cascade)
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([videoId, userId])
+  @@map("likes")
+}
+
+model Playlist {
+  id          String   @id @default(cuid())
+  title       String
+  description String?
+  isPublic    Boolean  @default(false)
+  userId      String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  user  User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  items PlaylistItem[]
+
+  @@map("playlists")
+}
+
+model PlaylistItem {
+  id         String   @id @default(cuid())
+  playlistId String
+  videoId    String
+  position   Int
+  createdAt  DateTime @default(now())
+
+  // Relations
+  playlist Playlist @relation(fields: [playlistId], references: [id], onDelete: Cascade)
+  video    Video    @relation(fields: [videoId], references: [id], onDelete: Cascade)
+
+  @@unique([playlistId, videoId])
+  @@map("playlist_items")
+}
+
+model ViewHistory {
+  id        String   @id @default(cuid())
+  userId    String
+  videoId   String
+  watchedAt DateTime @default(now())
+  progress  Int      @default(0) // seconds watched
+
+  // Relations
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  video Video @relation(fields: [videoId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, videoId])
+  @@map("view_history")
+}
+
+model Subscription {
+  id           String   @id @default(cuid())
+  subscriberId String
+  subscribedToId String
+  createdAt    DateTime @default(now())
+
+  // Relations
+  subscriber   User @relation("UserSubscriptions", fields: [subscriberId], references: [id], onDelete: Cascade)
+  subscribedTo User @relation("UserSubscribers", fields: [subscribedToId], references: [id], onDelete: Cascade)
+
+  @@unique([subscriberId, subscribedToId])
+  @@map("subscriptions")
+}
+
+enum VideoStatus {
+  PROCESSING
+  READY
+  FAILED
+}
+
+enum LikeType {
+  LIKE
+  DISLIKE
+}

@@ -1,0 +1,16 @@
+{
+  "name": "@duunoii/shared",
+  "version": "1.0.0",
+  "description": "Shared types and utilities for Duunoii video platform",
+  "main": "index.ts",
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch"
+  },
+  "devDependencies": {
+    "typescript": "^5.0.0"
+  },
+  "keywords": ["typescript", "types", "shared"],
+  "author": "Duunoii Team",
+  "license": "MIT"
+}
