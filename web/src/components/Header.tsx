@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import Link from 'next/link';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { AuthModal } from '@/components/auth/AuthModal';
@@ -35,9 +36,9 @@ export function Header() {
 
             {/* Navigation */}
             <nav className="hidden md:flex items-center space-x-8">
-              <a href="/" className="text-gray-700 hover:text-gray-900">Home</a>
-              <a href="/explore" className="text-gray-700 hover:text-gray-900">Explore</a>
-              <a href="/trending" className="text-gray-700 hover:text-gray-900">Trending</a>
+              <Link href="/" className="text-gray-700 hover:text-gray-900">Home</Link>
+              <Link href="/explore" className="text-gray-700 hover:text-gray-900">Explore</Link>
+              <Link href="/trending" className="text-gray-700 hover:text-gray-900">Trending</Link>
             </nav>
 
             {/* Auth Section */}
