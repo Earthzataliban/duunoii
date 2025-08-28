@@ -169,73 +169,76 @@ jobs:
       - name: Run Web audit
         run: cd web && npm audit --audit-level=high
 
-  # Build and push Docker images (only on main branch)
-  docker-build:
-    name: Build Docker Images
-    runs-on: ubuntu-latest
-    needs: [api-test, web-test, code-quality]
-    if: github.ref == 'refs/heads/main'
+  # Build and push Docker images (only on main branch) - DISABLED
+  # docker-build:
+  #   name: Build Docker Images
+  #   runs-on: ubuntu-latest
+  #   needs: [api-test, web-test, code-quality]
+  #   if: github.ref == 'refs/heads/main'
+  #   permissions:
+  #     contents: read
+  #     packages: write
 
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+  #   steps:
+  #     - name: Checkout code
+  #       uses: actions/checkout@v4
+  
+  #     - name: Log in to Container Registry
+  #       uses: docker/login-action@v3
+  #       with:
+  #         registry: ${{ env.REGISTRY }}
+  #         username: ${{ github.actor }}
+  #         password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Log in to Container Registry
-        uses: docker/login-action@v3
-        with:
-          registry: ${{ env.REGISTRY }}
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
+  #     - name: Extract metadata for API
+  #       id: meta-api
+  #       uses: docker/metadata-action@v5
+  #       with:
+  #         images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-api
+  #         tags: |
+  #           type=ref,event=branch
+  #           type=sha
 
-      - name: Extract metadata for API
-        id: meta-api
-        uses: docker/metadata-action@v5
-        with:
-          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-api
-          tags: |
-            type=ref,event=branch
-            type=sha
+  #     - name: Build and push API image
+  #       uses: docker/build-push-action@v5
+  #       with:
+  #         context: .
+  #         file: ./infrastructure/Dockerfile.api
+  #         push: true
+  #         tags: ${{ steps.meta-api.outputs.tags }}
+  #         labels: ${{ steps.meta-api.outputs.labels }}
 
-      - name: Build and push API image
-        uses: docker/build-push-action@v5
-        with:
-          context: .
-          file: ./infrastructure/Dockerfile.api
-          push: true
-          tags: ${{ steps.meta-api.outputs.tags }}
-          labels: ${{ steps.meta-api.outputs.labels }}
+  #     - name: Extract metadata for Web
+  #       id: meta-web
+  #       uses: docker/metadata-action@v5
+  #       with:
+  #         images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-web
+  #         tags: |
+  #           type=ref,event=branch
+  #           type=sha
 
-      - name: Extract metadata for Web
-        id: meta-web
-        uses: docker/metadata-action@v5
-        with:
-          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-web
-          tags: |
-            type=ref,event=branch
-            type=sha
+  #     - name: Build and push Web image
+  #       uses: docker/build-push-action@v5
+  #       with:
+  #         context: .
+  #         file: ./infrastructure/Dockerfile.web
+  #         push: true
+  #         tags: ${{ steps.meta-web.outputs.tags }}
+  #         labels: ${{ steps.meta-web.outputs.labels }}
 
-      - name: Build and push Web image
-        uses: docker/build-push-action@v5
-        with:
-          context: .
-          file: ./infrastructure/Dockerfile.web
-          push: true
-          tags: ${{ steps.meta-web.outputs.tags }}
-          labels: ${{ steps.meta-web.outputs.labels }}
+  # Deploy to staging (only on main branch) - DISABLED
+  # deploy-staging:
+  #   name: Deploy to Staging
+  #   runs-on: ubuntu-latest
+  #   needs: [docker-build]
+  #   if: github.ref == 'refs/heads/main'
+  #   environment: staging
 
-  # Deploy to staging (only on main branch)
-  deploy-staging:
-    name: Deploy to Staging
-    runs-on: ubuntu-latest
-    needs: [docker-build]
-    if: github.ref == 'refs/heads/main'
-    environment: staging
-
-    steps:
-      - name: Deploy to staging
-        run: |
-          echo "🚀 Deploying to staging environment..."
-          echo "Would deploy images:"
-          echo "- ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-api:${{ github.sha }}"
-          echo "- ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-web:${{ github.sha }}"
-          # Add actual deployment commands here (e.g., kubectl, docker-compose, etc.)
+  #   steps:
+  #     - name: Deploy to staging
+  #       run: |
+  #         echo "🚀 Deploying to staging environment..."
+  #         echo "Would deploy images:"
+  #         echo "- ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-api:${{ github.sha }}"
+  #         echo "- ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-web:${{ github.sha }}"
+  #         # Add actual deployment commands here (e.g., kubectl, docker-compose, etc.)
