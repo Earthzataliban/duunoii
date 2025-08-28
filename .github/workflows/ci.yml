@@ -1,0 +1,238 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+
+env:
+  NODE_VERSION: '20.x'
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+
+jobs:
+  # Test and build the API
+  api-test:
+    name: API Tests
+    runs-on: ubuntu-latest
+    
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_USER: duunoii
+          POSTGRES_PASSWORD: duunoii_dev
+          POSTGRES_DB: duunoii_dev
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+      
+      redis:
+        image: redis:7-alpine
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 6379:6379
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install root dependencies
+        run: npm ci
+
+      - name: Install API dependencies
+        run: cd api && npm ci
+
+      - name: Generate Prisma client
+        run: cd api && npx prisma generate
+
+      - name: Run database migrations
+        run: cd api && npx prisma migrate deploy
+        env:
+          DATABASE_URL: postgresql://duunoii:duunoii_dev@localhost:5432/duunoii_dev
+
+      - name: Run API unit tests
+        run: cd api && npm run test
+        env:
+          DATABASE_URL: postgresql://duunoii:duunoii_dev@localhost:5432/duunoii_dev
+          REDIS_URL: redis://localhost:6379
+          JWT_SECRET: test-secret-key-for-ci
+          JWT_EXPIRES_IN: 24h
+
+      - name: Run API e2e tests
+        run: cd api && npm run test:e2e
+        env:
+          DATABASE_URL: postgresql://duunoii:duunoii_dev@localhost:5432/duunoii_dev
+          REDIS_URL: redis://localhost:6379
+          JWT_SECRET: test-secret-key-for-ci
+          JWT_EXPIRES_IN: 24h
+
+      - name: Build API
+        run: cd api && npm run build
+
+  # Test and build the Web frontend
+  web-test:
+    name: Web Tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install root dependencies
+        run: npm ci
+
+      - name: Install Web dependencies
+        run: cd web && npm ci
+
+      - name: Run Web linting
+        run: cd web && npm run lint
+
+      - name: Run Web type checking
+        run: cd web && npm run type-check
+
+      - name: Build Web
+        run: cd web && npm run build
+
+  # Lint and format check
+  code-quality:
+    name: Code Quality
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install root dependencies
+        run: npm ci
+
+      - name: Run root linting
+        run: npm run lint
+
+      - name: Check code formatting
+        run: npm run format:check
+
+  # Security audit
+  security:
+    name: Security Audit
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install root dependencies
+        run: npm ci
+
+      - name: Run npm audit
+        run: npm audit --audit-level=high
+
+      - name: Run API audit
+        run: cd api && npm audit --audit-level=high
+
+      - name: Run Web audit
+        run: cd web && npm audit --audit-level=high
+
+  # Build and push Docker images (only on main branch)
+  docker-build:
+    name: Build Docker Images
+    runs-on: ubuntu-latest
+    needs: [api-test, web-test, code-quality]
+    if: github.ref == 'refs/heads/main'
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Log in to Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata for API
+        id: meta-api
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-api
+          tags: |
+            type=ref,event=branch
+            type=sha
+
+      - name: Build and push API image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./infrastructure/Dockerfile.api
+          push: true
+          tags: ${{ steps.meta-api.outputs.tags }}
+          labels: ${{ steps.meta-api.outputs.labels }}
+
+      - name: Extract metadata for Web
+        id: meta-web
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-web
+          tags: |
+            type=ref,event=branch
+            type=sha
+
+      - name: Build and push Web image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./infrastructure/Dockerfile.web
+          push: true
+          tags: ${{ steps.meta-web.outputs.tags }}
+          labels: ${{ steps.meta-web.outputs.labels }}
+
+  # Deploy to staging (only on main branch)
+  deploy-staging:
+    name: Deploy to Staging
+    runs-on: ubuntu-latest
+    needs: [docker-build]
+    if: github.ref == 'refs/heads/main'
+    environment: staging
+
+    steps:
+      - name: Deploy to staging
+        run: |
+          echo "🚀 Deploying to staging environment..."
+          echo "Would deploy images:"
+          echo "- ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-api:${{ github.sha }}"
+          echo "- ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-web:${{ github.sha }}"
+          # Add actual deployment commands here (e.g., kubectl, docker-compose, etc.)

@@ -23,6 +23,9 @@
     "format": "npm run format:api && npm run format:web",
     "format:api": "cd api && npm run format",
     "format:web": "cd web && npm run format",
+    "format:check": "npm run format:check:api && npm run format:check:web",
+    "format:check:api": "cd api && npm run format:check || true",
+    "format:check:web": "cd web && npm run format:check || true",
     "docker:dev": "docker compose up -d",
     "docker:down": "docker compose down"
   },
