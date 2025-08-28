@@ -7,12 +7,16 @@ import { PrismaService } from '../prisma/prisma.service';
 import { CreateVideoDto } from './dto/create-video.dto';
 import { UpdateVideoDto } from './dto/update-video.dto';
 import { VideoStatus } from '@prisma/client';
+import { VideoQueueService } from './video-queue.service';
 import * as path from 'path';
 import * as fs from 'fs/promises';
 
 @Injectable()
 export class VideosService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private videoQueueService: VideoQueueService,
+  ) {}
 
   async create(
     createVideoDto: CreateVideoDto,
@@ -73,6 +77,18 @@ export class VideosService {
         },
       },
     });
+
+    // Queue video processing job
+    try {
+      await this.videoQueueService.addVideoProcessingJob(video.id, userId);
+    } catch {
+      // If queue fails, update video status to FAILED
+      await this.prisma.video.update({
+        where: { id: video.id },
+        data: { status: VideoStatus.FAILED },
+      });
+      throw new BadRequestException('Failed to queue video for processing');
+    }
 
     return video;
   }
@@ -231,5 +247,26 @@ export class VideosService {
         },
       },
     });
+  }
+
+  async getProcessingStatus(id: string) {
+    const video = await this.prisma.video.findUnique({
+      where: { id },
+      select: { status: true, title: true },
+    });
+
+    if (!video) {
+      throw new NotFoundException('Video not found');
+    }
+
+    return {
+      videoId: id,
+      status: video.status,
+      title: video.title,
+    };
+  }
+
+  async getQueueStats() {
+    return await this.videoQueueService.getQueueStats();
   }
 }

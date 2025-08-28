@@ -1,5 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { VideosService } from './videos.service';
+import { VideoQueueService } from './video-queue.service';
 import { PrismaService } from '../prisma/prisma.service';
 
 describe('VideosService', () => {
@@ -16,6 +17,11 @@ describe('VideosService', () => {
     },
   };
 
+  const mockVideoQueueService = {
+    addVideoProcessingJob: jest.fn(),
+    getQueueStats: jest.fn(),
+  };
+
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -23,6 +29,10 @@ describe('VideosService', () => {
         {
           provide: PrismaService,
           useValue: mockPrismaService,
+        },
+        {
+          provide: VideoQueueService,
+          useValue: mockVideoQueueService,
         },
       ],
     }).compile();

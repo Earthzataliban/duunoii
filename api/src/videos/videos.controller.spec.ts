@@ -1,6 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { VideosController } from './videos.controller';
 import { VideosService } from './videos.service';
+import { HLSService } from './hls.service';
 import { PrismaService } from '../prisma/prisma.service';
 
 describe('VideosController', () => {
@@ -14,6 +15,14 @@ describe('VideosController', () => {
     update: jest.fn(),
     remove: jest.fn(),
     incrementViews: jest.fn(),
+    getProcessingStatus: jest.fn(),
+    getQueueStats: jest.fn(),
+  };
+
+  const mockHLSService = {
+    getHLSManifest: jest.fn(),
+    getPlaylistFile: jest.fn(),
+    getSegmentFile: jest.fn(),
   };
 
   const mockPrismaService = {
@@ -34,6 +43,10 @@ describe('VideosController', () => {
         {
           provide: VideosService,
           useValue: mockVideosService,
+        },
+        {
+          provide: HLSService,
+          useValue: mockHLSService,
         },
         {
           provide: PrismaService,
