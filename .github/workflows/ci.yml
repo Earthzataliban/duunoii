@@ -66,6 +66,9 @@ jobs:
         env:
           DATABASE_URL: postgresql://duunoii:duunoii_dev@localhost:5432/duunoii_dev
 
+      - name: Run API linting
+        run: cd api && npm run lint
+
       - name: Run API unit tests
         run: cd api && npm run test
         env:
