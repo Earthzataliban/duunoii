@@ -59,9 +59,9 @@ jobs:
 
       - name: Install dependencies
         run: |
-          npm ci
-          cd api && npm ci
-          cd ../web && npm ci
+          npm install
+          cd api && npm install  
+          cd ../web && npm install
 
       - name: Run npm audit (Root)
         run: npm audit --audit-level=moderate --production
@@ -92,9 +92,9 @@ jobs:
 
       - name: Install dependencies
         run: |
-          npm ci
-          cd api && npm ci
-          cd ../web && npm ci
+          npm install
+          cd api && npm install  
+          cd ../web && npm install
 
       - name: Check licenses
         run: |
