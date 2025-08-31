@@ -1,6 +1,6 @@
 # Dependabot configuration for automatic dependency updates
 # DISABLED: Uncomment below when ready for production
-version: 2
+# version: 2
 # updates:
 #   # Enable version updates for npm (root)
 #   - package-ecosystem: "npm"
