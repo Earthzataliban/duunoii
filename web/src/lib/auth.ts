@@ -27,7 +27,7 @@ export interface RegisterData {
 }
 
 export class AuthService {
-  private static TOKEN_KEY = 'auth_token';
+  private static TOKEN_KEY = 'token';
 
   static getToken(): string | null {
     if (typeof window === 'undefined') return null;
@@ -59,8 +59,10 @@ export class AuthService {
     }
 
     const result = await response.json();
-    this.setToken(result.token);
-    return result;
+    // Handle API response format: { success: true, data: { user, token } }
+    const authData = result.data || result;
+    this.setToken(authData.token);
+    return authData;
   }
 
   static async login(data: LoginData): Promise<AuthResponse> {
@@ -78,8 +80,10 @@ export class AuthService {
     }
 
     const result = await response.json();
-    this.setToken(result.token);
-    return result;
+    // Handle API response format: { success: true, data: { user, token } }
+    const authData = result.data || result;
+    this.setToken(authData.token);
+    return authData;
   }
 
   static async getProfile(): Promise<User> {
@@ -102,7 +106,9 @@ export class AuthService {
       throw new Error('Failed to get profile');
     }
 
-    return response.json();
+    const result = await response.json();
+    // Handle API response format: { success: true, data: user }
+    return result.data || result;
   }
 
   static logout(): void {

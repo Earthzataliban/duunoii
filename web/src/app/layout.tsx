@@ -1,8 +1,10 @@
-import type { Metadata } from 'next';
+'use client';
+
+// import type { Metadata } from 'next';
 import { Geist, Geist_Mono } from 'next/font/google';
 import './globals.css';
 import { AuthProvider } from '@/contexts/AuthContext';
-import { Header } from '@/components/Header';
+import { AppLayout } from '@/components/AppLayout';
 
 const geistSans = Geist({
   variable: '--font-geist-sans',
@@ -14,11 +16,6 @@ const geistMono = Geist_Mono({
   subsets: ['latin'],
 });
 
-export const metadata: Metadata = {
-  title: 'Duunoii - Video Platform',
-  description: 'Budget-friendly video platform for everyone',
-};
-
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -27,13 +24,12 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased bg-gray-50`}
+        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
         <AuthProvider>
-          <Header />
-          <main className="min-h-screen">
+          <AppLayout>
             {children}
-          </main>
+          </AppLayout>
         </AuthProvider>
       </body>
     </html>
