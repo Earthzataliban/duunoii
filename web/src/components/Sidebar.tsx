@@ -1,16 +1,16 @@
 'use client';
 
-// import { useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
-import { 
-  Home, 
-  Play, 
-  Users, 
-  BookOpen, 
-  History, 
-  Clock, 
+import { Button } from '@/components/ui/button';
+import {
+  Home,
+  Play,
+  Users,
+  BookOpen,
+  History,
+  Clock,
   ThumbsUp,
   X,
   Upload
@@ -53,53 +53,55 @@ export function Sidebar({ isCollapsed, onToggle }: SidebarProps) {
     <>
       {/* Mobile Overlay */}
       {!isCollapsed && (
-        <div 
+        <div
           className="fixed inset-0 bg-black/50 z-40 md:hidden"
           onClick={onToggle}
         />
       )}
 
       {/* Sidebar */}
-      <aside 
+      <aside
         className={cn(
-          'fixed left-0 top-0 h-full bg-gray-900 text-white z-50 transition-transform duration-300 overflow-y-auto',
-          'md:static md:z-auto',
-          isCollapsed ? '-translate-x-full md:translate-x-0 md:w-16' : 'w-64 md:w-64'
+          'fixed left-0 top-0 h-screen bg-sidebar text-sidebar-foreground border-r border-sidebar-border z-50 transition-transform duration-300 overflow-y-auto',
+          'md:static md:z-auto md:h-full',
+          isCollapsed ? '-translate-x-full md:translate-x-0 md:w-16' : 'w-64 md:w-full'
         )}
       >
         {/* Header */}
-        <div className="flex items-center justify-between p-4 border-b border-gray-800 md:hidden">
-          <button
+        <div className="flex items-center justify-between p-4 border-b border-sidebar-border md:hidden">
+          <Button
+            variant="ghost"
+            size="icon"
             onClick={onToggle}
-            className="p-1 hover:bg-gray-800 rounded"
           >
             <X className="h-6 w-6" />
-          </button>
+          </Button>
         </div>
 
         {/* Navigation */}
-        <nav className="p-2">
+        <nav className="p-3 space-y-1">
           {/* Main Navigation */}
           <div className="mb-6">
             {mainNavItems.map((item) => {
               const Icon = item.icon;
               const isActive = pathname === item.href;
-              
+
               return (
-                <Link
+                <Button
                   key={item.href}
-                  href={item.href}
+                  variant={isActive ? "secondary" : "ghost"}
+                  size="default"
                   className={cn(
-                    'flex items-center space-x-3 px-3 py-2 rounded-lg transition-colors',
-                    isActive 
-                      ? 'bg-gray-800 text-white' 
-                      : 'text-gray-300 hover:bg-gray-800 hover:text-white',
-                    isCollapsed && 'justify-center space-x-0'
+                    'w-full justify-start h-10 px-3',
+                    isCollapsed && 'w-10 px-0 justify-center'
                   )}
+                  asChild
                 >
-                  <Icon className="h-5 w-5 flex-shrink-0" />
-                  {!isCollapsed && <span>{item.label}</span>}
-                </Link>
+                  <Link href={item.href}>
+                    <Icon className="h-5 w-5 flex-shrink-0" />
+                    {!isCollapsed && <span className="ml-3">{item.label}</span>}
+                  </Link>
+                </Button>
               );
             })}
           </div>
@@ -108,27 +110,26 @@ export function Sidebar({ isCollapsed, onToggle }: SidebarProps) {
             <>
               {/* Library Section */}
               <div className="mb-6">
-                <h3 className="text-gray-400 text-sm font-semibold px-3 mb-2 uppercase tracking-wide">
+                <h3 className="text-muted-foreground text-sm font-semibold px-3 mb-2 uppercase tracking-wide">
                   Library
                 </h3>
                 {libraryItems.map((item) => {
                   const Icon = item.icon;
                   const isActive = pathname === item.href;
-                  
+
                   return (
-                    <Link
+                    <Button
                       key={item.href}
-                      href={item.href}
-                      className={cn(
-                        'flex items-center space-x-3 px-3 py-2 rounded-lg transition-colors',
-                        isActive 
-                          ? 'bg-gray-800 text-white' 
-                          : 'text-gray-300 hover:bg-gray-800 hover:text-white'
-                      )}
+                      variant={isActive ? "secondary" : "ghost"}
+                      size="default"
+                      className="w-full justify-start h-10 px-3"
+                      asChild
                     >
-                      <Icon className="h-5 w-5 flex-shrink-0" />
-                      <span>{item.label}</span>
-                    </Link>
+                      <Link href={item.href}>
+                        <Icon className="h-5 w-5 flex-shrink-0" />
+                        <span className="ml-3">{item.label}</span>
+                      </Link>
+                    </Button>
                   );
                 })}
               </div>

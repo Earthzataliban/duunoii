@@ -45,9 +45,9 @@ export default function UploadPage() {
   // Show loading state while checking authentication
   if (!isAuthenticated && !user) {
     return (
-      <div className="min-h-screen bg-gray-950 flex items-center justify-center">
+      <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center">
-          <div className="text-white text-xl mb-4">Please login to upload videos</div>
+          <div className="text-foreground text-xl mb-4">Please login to upload videos</div>
           <Button onClick={() => router.push('/')} className="bg-red-600 hover:bg-red-700">
             Go to Home
           </Button>
@@ -252,14 +252,14 @@ export default function UploadPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-950 p-6">
+    <div className="min-h-screen bg-background p-6">
       <div className="max-w-4xl mx-auto">
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-white mb-2">Upload Video</h1>
-          <p className="text-gray-400">Share your content with the world</p>
+          <h1 className="text-3xl font-bold text-foreground mb-2">Upload Video</h1>
+          <p className="text-muted-foreground">Share your content with the world</p>
           
           {/* Debug Info */}
-          <div className="mt-4 p-4 bg-gray-800 rounded-lg text-sm text-gray-300">
+          <div className="mt-4 p-4 bg-card rounded-lg text-sm text-muted-foreground border">
             <p><strong>Debug Info:</strong></p>
             <p>• User authenticated: {isAuthenticated ? 'Yes' : 'No'}</p>
             <p>• User: {user ? user.email || user.username : 'None'}</p>
@@ -281,7 +281,7 @@ export default function UploadPage() {
                   "border-2 border-dashed rounded-lg p-8 text-center transition-colors cursor-pointer",
                   dragActive
                     ? "border-blue-500 bg-blue-500/10"
-                    : "border-gray-600 hover:border-gray-500"
+                    : "border-border hover:border-muted-foreground"
                 )}
                 onDragEnter={handleDrag}
                 onDragLeave={handleDrag}
@@ -289,14 +289,14 @@ export default function UploadPage() {
                 onDrop={handleDrop}
                 onClick={() => fileInputRef.current?.click()}
               >
-                <Upload className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                <h3 className="text-xl font-semibold text-white mb-2">
+                <Upload className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                <h3 className="text-xl font-semibold text-foreground mb-2">
                   Drop your video here
                 </h3>
-                <p className="text-gray-400 mb-4">
+                <p className="text-muted-foreground mb-4">
                   or click to browse files
                 </p>
-                <p className="text-sm text-gray-500">
+                <p className="text-sm text-muted-foreground">
                   Supports MP4, AVI, MOV, WMV (Max 100MB)
                 </p>
                 <input
@@ -393,7 +393,7 @@ export default function UploadPage() {
                     className="bg-gray-700 border-gray-600 text-white"
                     maxLength={100}
                   />
-                  <p className="text-xs text-gray-400 mt-1">
+                  <p className="text-xs text-muted-foreground mt-1">
                     {videoData.title.length}/100 characters
                   </p>
                 </div>
@@ -410,7 +410,7 @@ export default function UploadPage() {
                     className="bg-gray-700 border-gray-600 text-white min-h-[120px]"
                     maxLength={1000}
                   />
-                  <p className="text-xs text-gray-400 mt-1">
+                  <p className="text-xs text-muted-foreground mt-1">
                     {videoData.description.length}/1000 characters
                   </p>
                 </div>

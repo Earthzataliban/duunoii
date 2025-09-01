@@ -6,6 +6,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { useAuth } from '@/contexts/AuthContext';
 
 const loginSchema = z.object({
@@ -46,14 +47,14 @@ export function LoginForm({ onSuccess, onSwitchToRegister }: LoginFormProps) {
     <div className="w-full max-w-md mx-auto space-y-6">
       <div className="text-center">
         <h2 className="text-2xl font-bold">Sign In</h2>
-        <p className="text-gray-600 mt-2">Welcome back to Duunoii</p>
+        <p className="text-muted-foreground mt-2">Welcome back to Duunoii</p>
       </div>
 
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
         <div>
-          <label htmlFor="identifier" className="block text-sm font-medium text-gray-700 mb-1">
+          <Label htmlFor="identifier">
             Email or Username
-          </label>
+          </Label>
           <Input
             id="identifier"
             type="text"
@@ -66,9 +67,9 @@ export function LoginForm({ onSuccess, onSwitchToRegister }: LoginFormProps) {
         </div>
 
         <div>
-          <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
+          <Label htmlFor="password">
             Password
-          </label>
+          </Label>
           <Input
             id="password"
             type="password"
@@ -92,15 +93,15 @@ export function LoginForm({ onSuccess, onSwitchToRegister }: LoginFormProps) {
       </form>
 
       <div className="text-center">
-        <p className="text-sm text-gray-600">
+        <p className="text-sm text-muted-foreground">
           Don&apos;t have an account?{' '}
-          <button
-            type="button"
+          <Button
+            variant="link"
             onClick={onSwitchToRegister}
-            className="text-blue-600 hover:underline font-medium"
+            className="p-0 h-auto font-medium"
           >
             Sign up
-          </button>
+          </Button>
         </p>
       </div>
     </div>

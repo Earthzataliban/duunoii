@@ -37,31 +37,26 @@ export function AppLayout({ children }: AppLayoutProps) {
   return (
     <div className={cn(
       'min-h-screen transition-colors',
-      isDarkMode ? 'bg-gray-950 text-white' : 'bg-gray-50 text-gray-900'
+      isDarkMode && 'dark'
     )}>
-      <Header 
+      <Header
         onMenuClick={toggleSidebar}
         isDarkMode={isDarkMode}
         onThemeToggle={toggleTheme}
       />
-      
-      <div className="flex">
-        <Sidebar 
+
+      <div className={cn(
+        "grid min-h-screen",
+        !sidebarCollapsed ? "md:grid-cols-[256px_1fr]" : "md:grid-cols-[64px_1fr]",
+        "grid-cols-1"
+      )}>
+        <Sidebar
           isCollapsed={sidebarCollapsed}
           onToggle={toggleSidebar}
         />
-        
-        <main className={cn(
-          'flex-1 min-h-screen transition-all duration-300',
-          sidebarCollapsed ? 'md:ml-16' : 'md:ml-64',
-          'ml-0' // Always start with 0 margin on mobile
-        )}>
-          <div className={cn(
-            'min-h-screen',
-            isDarkMode ? 'bg-gray-950' : 'bg-gray-50'
-          )}>
-            {children}
-          </div>
+
+        <main className="bg-background min-h-0">
+          {children}
         </main>
       </div>
     </div>

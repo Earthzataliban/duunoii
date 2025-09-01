@@ -50,7 +50,7 @@ describe('Sidebar', () => {
       render(<Sidebar isCollapsed={false} onToggle={mockOnToggle} />);
 
       const uploadLink = screen.getByRole('link', { name: /upload/i });
-      expect(uploadLink).toHaveClass('bg-gray-800', 'text-white');
+      expect(uploadLink).toHaveClass('bg-secondary', 'text-secondary-foreground');
     });
 
     it('shows icons for navigation items', () => {
@@ -138,7 +138,7 @@ describe('Sidebar', () => {
       render(<Sidebar isCollapsed={false} onToggle={mockOnToggle} />);
 
       const sidebar = screen.getByRole('complementary', { hidden: true });
-      expect(sidebar).toHaveClass('w-64', 'md:w-64');
+      expect(sidebar).toHaveClass('w-64', 'md:w-full');
       expect(sidebar).not.toHaveClass('-translate-x-full');
     });
 
@@ -149,7 +149,7 @@ describe('Sidebar', () => {
       const homeLink = links.find(link => link.getAttribute('href') === '/');
       
       expect(homeLink).toHaveClass('justify-center');
-      expect(homeLink).toHaveClass('space-x-0');
+      expect(homeLink).toHaveClass('w-10', 'px-0');
     });
 
     it('shows text labels when expanded', () => {
@@ -168,7 +168,7 @@ describe('Sidebar', () => {
       render(<Sidebar isCollapsed={false} onToggle={mockOnToggle} />);
 
       const homeLink = screen.getByRole('link', { name: /home/i });
-      expect(homeLink).toHaveClass('bg-gray-800', 'text-white');
+      expect(homeLink).toHaveClass('bg-secondary', 'text-secondary-foreground');
     });
 
     it('highlights upload link when on upload page', () => {
@@ -176,7 +176,7 @@ describe('Sidebar', () => {
       render(<Sidebar isCollapsed={false} onToggle={mockOnToggle} />);
 
       const uploadLink = screen.getByRole('link', { name: /upload/i });
-      expect(uploadLink).toHaveClass('bg-gray-800', 'text-white');
+      expect(uploadLink).toHaveClass('bg-secondary', 'text-secondary-foreground');
     });
 
     it('highlights library items when active', () => {
@@ -184,7 +184,7 @@ describe('Sidebar', () => {
       render(<Sidebar isCollapsed={false} onToggle={mockOnToggle} />);
 
       const historyLink = screen.getByRole('link', { name: /history/i });
-      expect(historyLink).toHaveClass('bg-gray-800', 'text-white');
+      expect(historyLink).toHaveClass('bg-secondary', 'text-secondary-foreground');
     });
 
     it('applies inactive styles to non-active items', () => {
@@ -192,8 +192,8 @@ describe('Sidebar', () => {
       render(<Sidebar isCollapsed={false} onToggle={mockOnToggle} />);
 
       const homeLink = screen.getByRole('link', { name: /home/i });
-      expect(homeLink).toHaveClass('text-gray-300', 'hover:bg-gray-800', 'hover:text-white');
-      expect(homeLink).not.toHaveClass('bg-gray-800', 'text-white');
+      expect(homeLink).toHaveClass('hover:bg-accent', 'hover:text-accent-foreground');
+      expect(homeLink).not.toHaveClass('bg-secondary', 'text-secondary-foreground');
     });
   });
 
