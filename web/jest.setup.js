@@ -74,6 +74,17 @@ beforeAll(() => {
     ) {
       return;
     }
+    
+    // Ignore expected authentication test errors
+    if (
+      args[0] instanceof Error &&
+      (args[0].message === 'Invalid credentials' || 
+       args[0].message === 'Email already exists' ||
+       args[0].message === 'Token expired')
+    ) {
+      return;
+    }
+    
     originalError.call(console, ...args);
   };
 });
