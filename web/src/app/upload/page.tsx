@@ -31,6 +31,7 @@ export default function UploadPage() {
 
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [dragActive, setDragActive] = useState(false);
+  const [videoPreviewUrl, setVideoPreviewUrl] = useState<string | null>(null);
   const [uploadProgress, setUploadProgress] = useState<UploadProgress>({
     progress: 0,
     status: 'idle'
@@ -76,6 +77,11 @@ export default function UploadPage() {
       const file = files[0];
       if (file.type.startsWith('video/')) {
         setSelectedFile(file);
+        
+        // Create video preview URL
+        const previewUrl = URL.createObjectURL(file);
+        setVideoPreviewUrl(previewUrl);
+        
         if (!videoData.title) {
           setVideoData(prev => ({
             ...prev,
@@ -92,6 +98,11 @@ export default function UploadPage() {
     const file = e.target.files?.[0];
     if (file) {
       setSelectedFile(file);
+      
+      // Create video preview URL
+      const previewUrl = URL.createObjectURL(file);
+      setVideoPreviewUrl(previewUrl);
+      
       if (!videoData.title) {
         setVideoData(prev => ({
           ...prev,
@@ -244,6 +255,13 @@ export default function UploadPage() {
 
   const removeFile = () => {
     setSelectedFile(null);
+    
+    // Cleanup video preview URL to free memory
+    if (videoPreviewUrl) {
+      URL.revokeObjectURL(videoPreviewUrl);
+      setVideoPreviewUrl(null);
+    }
+    
     setVideoData({ title: '', description: '', thumbnail: null });
     setUploadProgress({ progress: 0, status: 'idle' });
     if (fileInputRef.current) {
@@ -258,17 +276,6 @@ export default function UploadPage() {
           <h1 className="text-3xl font-bold text-foreground mb-2">Upload Video</h1>
           <p className="text-muted-foreground">Share your content with the world</p>
           
-          {/* Debug Info */}
-          <div className="mt-4 p-4 bg-card rounded-lg text-sm text-muted-foreground border">
-            <p><strong>Debug Info:</strong></p>
-            <p>• User authenticated: {isAuthenticated ? 'Yes' : 'No'}</p>
-            <p>• User: {user ? user.email || user.username : 'None'}</p>
-            <p>• Token: {typeof window !== 'undefined' ? localStorage.getItem('token') ? 'Found' : 'Not found' : 'SSR'}</p>
-            <p>• AuthService Token: {AuthService.getToken() ? 'Found' : 'Not found'}</p>
-            <p>• Selected file: {selectedFile ? selectedFile.name : 'None'}</p>
-            <p>• Title: &quot;{videoData.title}&quot;</p>
-            <p>• Button disabled: {(!selectedFile || !videoData.title.trim() || uploadProgress.status === 'uploading' || uploadProgress.status === 'processing').toString()}</p>
-          </div>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
@@ -308,13 +315,27 @@ export default function UploadPage() {
                 />
               </div>
             ) : (
-              <div className="bg-gray-800 rounded-lg p-6">
+              <div className="bg-card rounded-lg p-6 border">
+                {/* Video Preview */}
+                {videoPreviewUrl && (
+                  <div className="mb-4">
+                    <video
+                      src={videoPreviewUrl}
+                      controls
+                      className="w-full max-h-64 rounded-lg bg-black"
+                      preload="metadata"
+                    >
+                      Your browser does not support the video tag.
+                    </video>
+                  </div>
+                )}
+                
                 <div className="flex items-start justify-between mb-4">
                   <div className="flex items-center space-x-3">
-                    <Video className="h-8 w-8 text-blue-500" />
+                    <Video className="h-8 w-8 text-primary" />
                     <div>
-                      <h3 className="text-white font-medium">{selectedFile.name}</h3>
-                      <p className="text-gray-400 text-sm">
+                      <h3 className="text-foreground font-medium">{selectedFile.name}</h3>
+                      <p className="text-muted-foreground text-sm">
                         {formatFileSize(selectedFile.size)}
                       </p>
                     </div>
@@ -323,7 +344,7 @@ export default function UploadPage() {
                     variant="ghost"
                     size="sm"
                     onClick={removeFile}
-                    className="text-gray-400 hover:text-white"
+                    className="text-muted-foreground hover:text-foreground"
                   >
                     <X className="h-4 w-4" />
                   </Button>
@@ -333,23 +354,23 @@ export default function UploadPage() {
                 {uploadProgress.status !== 'idle' && (
                   <div className="mb-4">
                     <div className="flex items-center justify-between mb-2">
-                      <span className="text-sm text-gray-400">{uploadProgress.message}</span>
-                      <span className="text-sm text-gray-400">{uploadProgress.progress}%</span>
+                      <span className="text-sm text-muted-foreground">{uploadProgress.message}</span>
+                      <span className="text-sm text-muted-foreground">{uploadProgress.progress}%</span>
                     </div>
-                    <div className="w-full bg-gray-700 rounded-full h-2">
+                    <div className="w-full bg-secondary rounded-full h-2">
                       <div 
                         className={cn(
                           "h-2 rounded-full transition-all duration-300",
-                          uploadProgress.status === 'error' ? 'bg-red-500' :
+                          uploadProgress.status === 'error' ? 'bg-destructive' :
                           uploadProgress.status === 'completed' ? 'bg-green-500' :
-                          'bg-blue-500'
+                          'bg-primary'
                         )}
                         style={{ width: `${uploadProgress.progress}%` }}
                       />
                     </div>
                     <div className="flex items-center mt-2">
                       {uploadProgress.status === 'uploading' && (
-                        <Loader2 className="h-4 w-4 text-blue-500 animate-spin mr-2" />
+                        <Loader2 className="h-4 w-4 text-primary animate-spin mr-2" />
                       )}
                       {uploadProgress.status === 'processing' && (
                         <Loader2 className="h-4 w-4 text-yellow-500 animate-spin mr-2" />
@@ -358,13 +379,13 @@ export default function UploadPage() {
                         <CheckCircle className="h-4 w-4 text-green-500 mr-2" />
                       )}
                       {uploadProgress.status === 'error' && (
-                        <AlertCircle className="h-4 w-4 text-red-500 mr-2" />
+                        <AlertCircle className="h-4 w-4 text-destructive mr-2" />
                       )}
                       <span className={cn(
                         "text-sm",
-                        uploadProgress.status === 'error' ? 'text-red-500' :
+                        uploadProgress.status === 'error' ? 'text-destructive' :
                         uploadProgress.status === 'completed' ? 'text-green-500' :
-                        'text-gray-400'
+                        'text-muted-foreground'
                       )}>
                         {uploadProgress.message}
                       </span>
@@ -377,12 +398,12 @@ export default function UploadPage() {
 
           {/* Video Details Form */}
           <div className="space-y-6">
-            <div className="bg-gray-800 rounded-lg p-6">
-              <h2 className="text-xl font-semibold text-white mb-6">Video Details</h2>
+            <div className="bg-card rounded-lg p-6 border">
+              <h2 className="text-xl font-semibold text-foreground mb-6">Video Details</h2>
               
               <div className="space-y-4">
                 <div>
-                  <Label htmlFor="title" className="text-white">
+                  <Label htmlFor="title" className="text-foreground">
                     Title *
                   </Label>
                   <Input
@@ -390,7 +411,7 @@ export default function UploadPage() {
                     value={videoData.title}
                     onChange={(e) => setVideoData(prev => ({ ...prev, title: e.target.value }))}
                     placeholder="Enter video title"
-                    className="bg-gray-700 border-gray-600 text-white"
+                    className="bg-background border-border text-foreground"
                     maxLength={100}
                   />
                   <p className="text-xs text-muted-foreground mt-1">
@@ -399,7 +420,7 @@ export default function UploadPage() {
                 </div>
 
                 <div>
-                  <Label htmlFor="description" className="text-white">
+                  <Label htmlFor="description" className="text-foreground">
                     Description
                   </Label>
                   <Textarea
@@ -407,7 +428,7 @@ export default function UploadPage() {
                     value={videoData.description}
                     onChange={(e) => setVideoData(prev => ({ ...prev, description: e.target.value }))}
                     placeholder="Tell viewers about your video"
-                    className="bg-gray-700 border-gray-600 text-white min-h-[120px]"
+                    className="bg-background border-border text-foreground min-h-[120px]"
                     maxLength={1000}
                   />
                   <p className="text-xs text-muted-foreground mt-1">
@@ -424,7 +445,7 @@ export default function UploadPage() {
                 uploadVideo();
               }}
               disabled={!selectedFile || !videoData.title.trim() || uploadProgress.status === 'uploading' || uploadProgress.status === 'processing'}
-              className="w-full bg-red-600 hover:bg-red-700 text-white disabled:bg-gray-600 disabled:cursor-not-allowed"
+              className="w-full bg-primary hover:bg-primary/90 text-primary-foreground"
               size="lg"
             >
               {uploadProgress.status === 'uploading' || uploadProgress.status === 'processing' ? (
@@ -441,12 +462,12 @@ export default function UploadPage() {
             </Button>
 
             {selectedFile && uploadProgress.status === 'idle' && (
-              <div className="bg-blue-900/20 border border-blue-800 rounded-lg p-4">
+              <div className="bg-primary/10 border border-primary/20 rounded-lg p-4">
                 <div className="flex items-start space-x-2">
-                  <AlertCircle className="h-5 w-5 text-blue-400 flex-shrink-0 mt-0.5" />
-                  <div className="text-sm text-blue-200">
+                  <AlertCircle className="h-5 w-5 text-primary flex-shrink-0 mt-0.5" />
+                  <div className="text-sm text-foreground">
                     <p className="font-medium mb-1">Before you upload:</p>
-                    <ul className="space-y-1 text-blue-300">
+                    <ul className="space-y-1 text-muted-foreground">
                       <li>• Make sure your video follows our community guidelines</li>
                       <li>• Video will be processed after upload (may take several minutes)</li>
                       <li>• You&apos;ll be redirected to your video once processing is complete</li>

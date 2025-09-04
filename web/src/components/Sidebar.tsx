@@ -13,7 +13,8 @@ import {
   Clock,
   ThumbsUp,
   X,
-  Upload
+  Upload,
+  BarChart3
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -26,6 +27,7 @@ const mainNavItems = [
   { href: '/watch', label: 'Watch', icon: Play },
   { href: '/subscriptions', label: 'Subscriptions', icon: Users },
   { href: '/upload', label: 'Upload', icon: Upload },
+  { href: '/dashboard', label: 'Dashboard', icon: BarChart3 },
 ];
 
 const libraryItems = [
