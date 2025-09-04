@@ -1,4 +1,4 @@
-.PHONY: help setup dev build test lint clean docker-up docker-down migrate install
+.PHONY: help setup dev build test lint clean docker-up docker-down up down migrate install
 
 # Default target
 help:
@@ -24,6 +24,8 @@ help:
 	@echo "  make lint      - Run linting"
 	@echo ""
 	@echo "Utils:"
+	@echo "  make up        - Start all services & clear ports"
+	@echo "  make down      - Stop all services & clear ports"
 	@echo "  make clean     - Clean build files"
 	@echo "  make logs      - Show Docker logs"
 
@@ -52,6 +54,17 @@ docker-up:
 docker-down:
 	@echo "🛑 Stopping Docker services..."
 	docker compose down
+
+up:
+	@echo "🚀 Starting all services..."
+	./scripts/dev-setup.sh
+	@echo "✅ All services started!"
+
+down:
+	@echo "🛑 Stopping all services and clearing ports..."
+	./scripts/kill-ports.sh
+	docker compose down
+	@echo "✅ All services stopped and ports cleared!"
 
 # Database
 migrate:
