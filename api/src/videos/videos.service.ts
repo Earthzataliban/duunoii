@@ -6,7 +6,10 @@ import {
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateVideoDto } from './dto/create-video.dto';
 import { UpdateVideoDto } from './dto/update-video.dto';
-import { VideoStatus } from '@prisma/client';
+import { LikeVideoDto } from './dto/like-video.dto';
+import { CreateCommentDto } from './dto/create-comment.dto';
+import { UpdateCommentDto } from './dto/update-comment.dto';
+import { VideoStatus, LikeType } from '@prisma/client';
 import { VideoQueueService } from './video-queue.service';
 import * as path from 'path';
 import * as fs from 'fs/promises';
@@ -312,5 +315,418 @@ export class VideosService {
     } catch (error) {
       throw new NotFoundException('Thumbnail file not found');
     }
+  }
+
+  async likeVideo(videoId: string, userId: string, likeVideoDto: LikeVideoDto) {
+    // Check if video exists
+    const video = await this.prisma.video.findUnique({
+      where: { id: videoId },
+    });
+
+    if (!video) {
+      throw new NotFoundException('Video not found');
+    }
+
+    // Use upsert to handle like/dislike toggle logic
+    const like = await this.prisma.like.upsert({
+      where: {
+        videoId_userId: {
+          videoId,
+          userId,
+        },
+      },
+      update: {
+        type: likeVideoDto.type,
+      },
+      create: {
+        videoId,
+        userId,
+        type: likeVideoDto.type,
+      },
+      include: {
+        video: {
+          select: {
+            _count: {
+              select: {
+                likes: {
+                  where: { type: LikeType.LIKE },
+                },
+              },
+            },
+          },
+        },
+      },
+    });
+
+    // Get updated like/dislike counts
+    const [likeCount, dislikeCount] = await Promise.all([
+      this.prisma.like.count({
+        where: { videoId, type: LikeType.LIKE },
+      }),
+      this.prisma.like.count({
+        where: { videoId, type: LikeType.DISLIKE },
+      }),
+    ]);
+
+    return {
+      success: true,
+      userLikeType: like.type,
+      likeCount,
+      dislikeCount,
+    };
+  }
+
+  async unlikeVideo(videoId: string, userId: string) {
+    // Check if video exists
+    const video = await this.prisma.video.findUnique({
+      where: { id: videoId },
+    });
+
+    if (!video) {
+      throw new NotFoundException('Video not found');
+    }
+
+    // Check if user has liked/disliked the video
+    const existingLike = await this.prisma.like.findUnique({
+      where: {
+        videoId_userId: {
+          videoId,
+          userId,
+        },
+      },
+    });
+
+    if (!existingLike) {
+      throw new BadRequestException('You have not liked/disliked this video');
+    }
+
+    // Remove the like/dislike
+    await this.prisma.like.delete({
+      where: {
+        videoId_userId: {
+          videoId,
+          userId,
+        },
+      },
+    });
+
+    // Get updated like/dislike counts
+    const [likeCount, dislikeCount] = await Promise.all([
+      this.prisma.like.count({
+        where: { videoId, type: LikeType.LIKE },
+      }),
+      this.prisma.like.count({
+        where: { videoId, type: LikeType.DISLIKE },
+      }),
+    ]);
+
+    return {
+      success: true,
+      userLikeType: null,
+      likeCount,
+      dislikeCount,
+    };
+  }
+
+  async getVideoLikeStatus(videoId: string, userId?: string) {
+    // Check if video exists
+    const video = await this.prisma.video.findUnique({
+      where: { id: videoId },
+    });
+
+    if (!video) {
+      throw new NotFoundException('Video not found');
+    }
+
+    // Get like/dislike counts
+    const [likeCount, dislikeCount] = await Promise.all([
+      this.prisma.like.count({
+        where: { videoId, type: LikeType.LIKE },
+      }),
+      this.prisma.like.count({
+        where: { videoId, type: LikeType.DISLIKE },
+      }),
+    ]);
+
+    let userLikeType: LikeType | null = null;
+    if (userId) {
+      const userLike = await this.prisma.like.findUnique({
+        where: {
+          videoId_userId: {
+            videoId,
+            userId,
+          },
+        },
+      });
+      userLikeType = userLike?.type || null;
+    }
+
+    return {
+      likeCount,
+      dislikeCount,
+      userLikeType,
+    };
+  }
+
+  async createComment(
+    videoId: string,
+    userId: string,
+    createCommentDto: CreateCommentDto,
+  ) {
+    // Check if video exists
+    const video = await this.prisma.video.findUnique({
+      where: { id: videoId },
+    });
+
+    if (!video) {
+      throw new NotFoundException('Video not found');
+    }
+
+    // If parentId is provided, check if parent comment exists
+    if (createCommentDto.parentId) {
+      const parentComment = await this.prisma.comment.findUnique({
+        where: { id: createCommentDto.parentId },
+      });
+
+      if (!parentComment || parentComment.videoId !== videoId) {
+        throw new BadRequestException('Parent comment not found or not from this video');
+      }
+    }
+
+    // Create comment
+    const comment = await this.prisma.comment.create({
+      data: {
+        content: createCommentDto.content,
+        videoId,
+        userId,
+        parentId: createCommentDto.parentId,
+      },
+      include: {
+        user: {
+          select: {
+            id: true,
+            username: true,
+            displayName: true,
+            avatar: true,
+          },
+        },
+        _count: {
+          select: {
+            replies: true,
+          },
+        },
+      },
+    });
+
+    return comment;
+  }
+
+  async getVideoComments(
+    videoId: string,
+    page = 1,
+    limit = 10,
+    sortBy: 'newest' | 'oldest' = 'newest',
+  ) {
+    // Check if video exists
+    const video = await this.prisma.video.findUnique({
+      where: { id: videoId },
+    });
+
+    if (!video) {
+      throw new NotFoundException('Video not found');
+    }
+
+    const offset = (page - 1) * limit;
+    
+    const orderBy = sortBy === 'newest' 
+      ? { createdAt: 'desc' as const }
+      : { createdAt: 'asc' as const };
+
+    const [comments, total] = await Promise.all([
+      this.prisma.comment.findMany({
+        where: {
+          videoId,
+          parentId: null, // Only top-level comments
+        },
+        include: {
+          user: {
+            select: {
+              id: true,
+              username: true,
+              displayName: true,
+              avatar: true,
+            },
+          },
+          replies: {
+            include: {
+              user: {
+                select: {
+                  id: true,
+                  username: true,
+                  displayName: true,
+                  avatar: true,
+                },
+              },
+              _count: {
+                select: {
+                  replies: true,
+                },
+              },
+            },
+            orderBy: { createdAt: 'asc' },
+            take: 3, // Show first 3 replies, can load more later
+          },
+          _count: {
+            select: {
+              replies: true,
+            },
+          },
+        },
+        orderBy,
+        skip: offset,
+        take: limit,
+      }),
+      this.prisma.comment.count({
+        where: {
+          videoId,
+          parentId: null,
+        },
+      }),
+    ]);
+
+    return {
+      comments,
+      pagination: {
+        total,
+        page,
+        limit,
+        totalPages: Math.ceil(total / limit),
+      },
+    };
+  }
+
+  async getCommentReplies(commentId: string, page = 1, limit = 10) {
+    // Check if parent comment exists
+    const parentComment = await this.prisma.comment.findUnique({
+      where: { id: commentId },
+    });
+
+    if (!parentComment) {
+      throw new NotFoundException('Parent comment not found');
+    }
+
+    const offset = (page - 1) * limit;
+
+    const [replies, total] = await Promise.all([
+      this.prisma.comment.findMany({
+        where: { parentId: commentId },
+        include: {
+          user: {
+            select: {
+              id: true,
+              username: true,
+              displayName: true,
+              avatar: true,
+            },
+          },
+          _count: {
+            select: {
+              replies: true,
+            },
+          },
+        },
+        orderBy: { createdAt: 'asc' },
+        skip: offset,
+        take: limit,
+      }),
+      this.prisma.comment.count({
+        where: { parentId: commentId },
+      }),
+    ]);
+
+    return {
+      replies,
+      pagination: {
+        total,
+        page,
+        limit,
+        totalPages: Math.ceil(total / limit),
+      },
+    };
+  }
+
+  async updateComment(
+    commentId: string,
+    userId: string,
+    updateCommentDto: UpdateCommentDto,
+  ) {
+    // Check if comment exists and user owns it
+    const comment = await this.prisma.comment.findUnique({
+      where: { id: commentId },
+    });
+
+    if (!comment) {
+      throw new NotFoundException('Comment not found');
+    }
+
+    if (comment.userId !== userId) {
+      throw new BadRequestException('You can only edit your own comments');
+    }
+
+    const updatedComment = await this.prisma.comment.update({
+      where: { id: commentId },
+      data: {
+        content: updateCommentDto.content,
+      },
+      include: {
+        user: {
+          select: {
+            id: true,
+            username: true,
+            displayName: true,
+            avatar: true,
+          },
+        },
+        _count: {
+          select: {
+            replies: true,
+          },
+        },
+      },
+    });
+
+    return updatedComment;
+  }
+
+  async deleteComment(commentId: string, userId: string) {
+    // Check if comment exists and user owns it
+    const comment = await this.prisma.comment.findUnique({
+      where: { id: commentId },
+      include: {
+        _count: {
+          select: {
+            replies: true,
+          },
+        },
+      },
+    });
+
+    if (!comment) {
+      throw new NotFoundException('Comment not found');
+    }
+
+    if (comment.userId !== userId) {
+      throw new BadRequestException('You can only delete your own comments');
+    }
+
+    // Delete comment (cascade will handle replies)
+    await this.prisma.comment.delete({
+      where: { id: commentId },
+    });
+
+    return {
+      success: true,
+      message: `Comment deleted along with ${comment._count.replies} replies`,
+    };
   }
 }

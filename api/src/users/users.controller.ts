@@ -6,6 +6,9 @@ import {
   Request,
   Patch,
   Body,
+  Post,
+  Delete,
+  Query,
 } from '@nestjs/common';
 import { UsersService } from './users.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
@@ -75,5 +78,66 @@ export class UsersController {
       avatar: updatedUser.avatar,
       updatedAt: updatedUser.updatedAt,
     };
+  }
+
+  @Post(':id/subscribe')
+  @UseGuards(JwtAuthGuard)
+  async subscribeToUser(
+    @Param('id') subscribedToId: string,
+    @Request() req: AuthenticatedRequest,
+  ) {
+    return this.usersService.subscribeToUser(req.user.userId, subscribedToId);
+  }
+
+  @Delete(':id/subscribe')
+  @UseGuards(JwtAuthGuard)
+  async unsubscribeFromUser(
+    @Param('id') subscribedToId: string,
+    @Request() req: AuthenticatedRequest,
+  ) {
+    return this.usersService.unsubscribeFromUser(req.user.userId, subscribedToId);
+  }
+
+  @Get(':id/subscription-status')
+  @UseGuards(JwtAuthGuard)
+  async getSubscriptionStatus(
+    @Param('id') subscribedToId: string,
+    @Request() req: AuthenticatedRequest,
+  ) {
+    return this.usersService.getSubscriptionStatus(req.user.userId, subscribedToId);
+  }
+
+  @Get('me/subscriptions')
+  @UseGuards(JwtAuthGuard)
+  async getMySubscriptions(
+    @Request() req: AuthenticatedRequest,
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+  ) {
+    const parsedPage = page ? parseInt(page) || 1 : 1;
+    const parsedLimit = limit ? parseInt(limit) || 10 : 10;
+    return this.usersService.getUserSubscriptions(req.user.userId, parsedPage, parsedLimit);
+  }
+
+  @Get(':id/subscribers')
+  async getUserSubscribers(
+    @Param('id') userId: string,
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+  ) {
+    const parsedPage = page ? parseInt(page) || 1 : 1;
+    const parsedLimit = limit ? parseInt(limit) || 10 : 10;
+    return this.usersService.getUserSubscribers(userId, parsedPage, parsedLimit);
+  }
+
+  @Get(':id/subscriptions')
+  async getUserSubscriptions(
+    @Param('id') userId: string,
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+  ) {
+    const parsedPage = page ? parseInt(page) || 1 : 1;
+    const parsedLimit = limit ? parseInt(limit) || 10 : 10;
+    return this.usersService.getUserSubscriptions(userId, parsedPage, parsedLimit);
   }
 }

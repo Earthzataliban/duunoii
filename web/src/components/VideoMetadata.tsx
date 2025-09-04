@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { ThumbsUp, ThumbsDown, Share2, MoreHorizontal, Eye, Calendar } from 'lucide-react';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 
@@ -27,6 +27,54 @@ export function VideoMetadata({ video }: VideoMetadataProps) {
   const [liked, setLiked] = useState(false);
   const [disliked, setDisliked] = useState(false);
   const [subscribed, setSubscribed] = useState(false);
+  const [likeCount, setLikeCount] = useState(0);
+  const [dislikeCount, setDislikeCount] = useState(0);
+  const [subscriberCount, setSubscriberCount] = useState(0);
+  const [loading, setLoading] = useState(false);
+
+  // Load like status and counts on component mount
+  useEffect(() => {
+    loadVideoStats();
+  }, [video.id]);
+
+  const getAuthToken = () => {
+    return localStorage.getItem('token');
+  };
+
+  const loadVideoStats = async () => {
+    try {
+      // Load like status (requires auth)
+      const token = getAuthToken();
+      if (token) {
+        const likeResponse = await fetch(`http://localhost:8080/videos/${video.id}/like-status`, {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+          },
+        });
+        if (likeResponse.ok) {
+          const likeData = await likeResponse.json();
+          setLikeCount(likeData.likeCount);
+          setDislikeCount(likeData.dislikeCount);
+          setLiked(likeData.userLikeType === 'LIKE');
+          setDisliked(likeData.userLikeType === 'DISLIKE');
+        }
+
+        // Load subscription status
+        const subResponse = await fetch(`http://localhost:8080/users/${video.uploader.id}/subscription-status`, {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+          },
+        });
+        if (subResponse.ok) {
+          const subData = await subResponse.json();
+          setSubscribed(subData.isSubscribed);
+          setSubscriberCount(subData.subscriberCount);
+        }
+      }
+    } catch (error) {
+      console.error('Failed to load video stats:', error);
+    }
+  };
 
   const formatViews = (views: number) => {
     if (views >= 1000000) {
@@ -50,18 +98,143 @@ export function VideoMetadata({ video }: VideoMetadataProps) {
     return `${Math.ceil(diffDays / 365)} years ago`;
   };
 
-  const handleLike = () => {
-    setLiked(!liked);
-    if (disliked) setDisliked(false);
+  const handleLike = async () => {
+    const token = getAuthToken();
+    if (!token) {
+      alert('Please login to like videos');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      if (liked) {
+        // Unlike
+        const response = await fetch(`http://localhost:8080/videos/${video.id}/like`, {
+          method: 'DELETE',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+          },
+        });
+        if (response.ok) {
+          const data = await response.json();
+          setLiked(false);
+          setLikeCount(data.likeCount);
+          setDislikeCount(data.dislikeCount);
+        }
+      } else {
+        // Like
+        const response = await fetch(`http://localhost:8080/videos/${video.id}/like`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`,
+          },
+          body: JSON.stringify({ type: 'LIKE' }),
+        });
+        if (response.ok) {
+          const data = await response.json();
+          setLiked(true);
+          setDisliked(false);
+          setLikeCount(data.likeCount);
+          setDislikeCount(data.dislikeCount);
+        }
+      }
+    } catch (error) {
+      console.error('Failed to like video:', error);
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const handleDislike = () => {
-    setDisliked(!disliked);
-    if (liked) setLiked(false);
+  const handleDislike = async () => {
+    const token = getAuthToken();
+    if (!token) {
+      alert('Please login to dislike videos');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      if (disliked) {
+        // Remove dislike
+        const response = await fetch(`http://localhost:8080/videos/${video.id}/like`, {
+          method: 'DELETE',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+          },
+        });
+        if (response.ok) {
+          const data = await response.json();
+          setDisliked(false);
+          setLikeCount(data.likeCount);
+          setDislikeCount(data.dislikeCount);
+        }
+      } else {
+        // Dislike
+        const response = await fetch(`http://localhost:8080/videos/${video.id}/like`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`,
+          },
+          body: JSON.stringify({ type: 'DISLIKE' }),
+        });
+        if (response.ok) {
+          const data = await response.json();
+          setDisliked(true);
+          setLiked(false);
+          setLikeCount(data.likeCount);
+          setDislikeCount(data.dislikeCount);
+        }
+      }
+    } catch (error) {
+      console.error('Failed to dislike video:', error);
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const handleSubscribe = () => {
-    setSubscribed(!subscribed);
+  const handleSubscribe = async () => {
+    const token = getAuthToken();
+    if (!token) {
+      alert('Please login to subscribe');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      if (subscribed) {
+        // Unsubscribe
+        const response = await fetch(`http://localhost:8080/users/${video.uploader.id}/subscribe`, {
+          method: 'DELETE',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+          },
+        });
+        if (response.ok) {
+          const data = await response.json();
+          setSubscribed(false);
+          setSubscriberCount(data.subscriberCount);
+        }
+      } else {
+        // Subscribe
+        const response = await fetch(`http://localhost:8080/users/${video.uploader.id}/subscribe`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+          },
+        });
+        if (response.ok) {
+          const data = await response.json();
+          setSubscribed(true);
+          setSubscriberCount(data.subscription.subscriberCount || data.subscriberCount);
+        }
+      }
+    } catch (error) {
+      console.error('Failed to subscribe:', error);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleShare = () => {
@@ -105,25 +278,32 @@ export function VideoMetadata({ video }: VideoMetadataProps) {
         <div className="flex items-center gap-2">
           <button
             onClick={handleLike}
-            className={`flex items-center gap-2 px-3 py-2 rounded-full border transition-colors ${
+            disabled={loading}
+            className={`flex items-center gap-2 px-3 py-2 rounded-full border transition-colors disabled:opacity-50 ${
               liked 
                 ? 'bg-primary text-primary-foreground border-primary' 
                 : 'hover:bg-secondary border-border'
             }`}
           >
             <ThumbsUp size={16} />
-            <span className="text-sm font-medium">Like</span>
+            <span className="text-sm font-medium">
+              {likeCount > 0 ? likeCount : 'Like'}
+            </span>
           </button>
           
           <button
             onClick={handleDislike}
-            className={`flex items-center gap-2 px-3 py-2 rounded-full border transition-colors ${
+            disabled={loading}
+            className={`flex items-center gap-2 px-3 py-2 rounded-full border transition-colors disabled:opacity-50 ${
               disliked 
                 ? 'bg-destructive text-destructive-foreground border-destructive' 
                 : 'hover:bg-secondary border-border'
             }`}
           >
             <ThumbsDown size={16} />
+            {dislikeCount > 0 && (
+              <span className="text-sm font-medium">{dislikeCount}</span>
+            )}
           </button>
           
           <button
@@ -153,20 +333,21 @@ export function VideoMetadata({ video }: VideoMetadataProps) {
               {video.uploader.username}
             </h3>
             <p className="text-sm text-muted-foreground">
-              Published {formatDate(video.createdAt)}
+              {subscriberCount > 0 ? `${subscriberCount} subscribers` : 'No subscribers yet'} • Published {formatDate(video.createdAt)}
             </p>
           </div>
         </div>
         
         <button
           onClick={handleSubscribe}
-          className={`px-4 py-2 rounded-full font-medium text-sm transition-colors ${
+          disabled={loading}
+          className={`px-4 py-2 rounded-full font-medium text-sm transition-colors disabled:opacity-50 ${
             subscribed
               ? 'bg-secondary text-foreground border border-border hover:bg-secondary/80'
               : 'bg-primary text-primary-foreground hover:bg-primary/90'
           }`}
         >
-          {subscribed ? 'Subscribed' : 'Subscribe'}
+          {loading ? 'Loading...' : (subscribed ? 'Subscribed' : 'Subscribe')}
         </button>
       </div>
 

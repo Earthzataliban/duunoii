@@ -23,6 +23,9 @@ import { VideosService } from './videos.service';
 import { HLSService } from './hls.service';
 import { CreateVideoDto } from './dto/create-video.dto';
 import { UpdateVideoDto } from './dto/update-video.dto';
+import { LikeVideoDto } from './dto/like-video.dto';
+import { CreateCommentDto } from './dto/create-comment.dto';
+import { UpdateCommentDto } from './dto/update-comment.dto';
 import type { AuthenticatedRequest } from '../auth/interfaces/jwt-request.interface';
 
 @Controller('videos')
@@ -157,6 +160,87 @@ export class VideosController {
     } catch {
       throw new HttpException('Thumbnail not found', HttpStatus.NOT_FOUND);
     }
+  }
+
+  @Post(':id/like')
+  @UseGuards(JwtAuthGuard)
+  async likeVideo(
+    @Param('id') id: string,
+    @Body() likeVideoDto: LikeVideoDto,
+    @Request() req: AuthenticatedRequest,
+  ) {
+    return this.videosService.likeVideo(id, req.user.userId, likeVideoDto);
+  }
+
+  @Delete(':id/like')
+  @UseGuards(JwtAuthGuard)
+  async unlikeVideo(
+    @Param('id') id: string,
+    @Request() req: AuthenticatedRequest,
+  ) {
+    return this.videosService.unlikeVideo(id, req.user.userId);
+  }
+
+  @Get(':id/like-status')
+  async getLikeStatus(
+    @Param('id') id: string,
+    @Request() req: AuthenticatedRequest,
+  ) {
+    const userId = req.user?.userId;
+    return this.videosService.getVideoLikeStatus(id, userId);
+  }
+
+  @Post(':id/comments')
+  @UseGuards(JwtAuthGuard)
+  async createComment(
+    @Param('id') id: string,
+    @Body() createCommentDto: CreateCommentDto,
+    @Request() req: AuthenticatedRequest,
+  ) {
+    return this.videosService.createComment(id, req.user.userId, createCommentDto);
+  }
+
+  @Get(':id/comments')
+  async getVideoComments(
+    @Param('id') id: string,
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+    @Query('sort') sort?: 'newest' | 'oldest',
+  ) {
+    const parsedPage = page ? parseInt(page) || 1 : 1;
+    const parsedLimit = limit ? parseInt(limit) || 10 : 10;
+    const sortBy = sort || 'newest';
+    return this.videosService.getVideoComments(id, parsedPage, parsedLimit, sortBy);
+  }
+
+  @Get('comments/:commentId/replies')
+  async getCommentReplies(
+    @Param('commentId') commentId: string,
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+  ) {
+    const parsedPage = page ? parseInt(page) || 1 : 1;
+    const parsedLimit = limit ? parseInt(limit) || 10 : 10;
+    return this.videosService.getCommentReplies(commentId, parsedPage, parsedLimit);
+  }
+
+  @Patch('comments/:commentId')
+  @UseGuards(JwtAuthGuard)
+  async updateComment(
+    @Param('commentId') commentId: string,
+    @Body() updateCommentDto: UpdateCommentDto,
+    @Request() req: AuthenticatedRequest,
+  ) {
+    return this.videosService.updateComment(commentId, req.user.userId, updateCommentDto);
+  }
+
+  @Delete('comments/:commentId')
+  @UseGuards(JwtAuthGuard)
+  async deleteComment(
+    @Param('commentId') commentId: string,
+    @Request() req: AuthenticatedRequest,
+  ) {
+    return this.videosService.deleteComment(commentId, req.user.userId);
   }
 
   @Post(':id/regenerate-hls')

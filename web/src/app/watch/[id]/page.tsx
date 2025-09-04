@@ -5,6 +5,7 @@ import { useState, useEffect } from 'react';
 import { VideoPlayer } from '@/components/VideoPlayer';
 import { VideoMetadata } from '@/components/VideoMetadata';
 import { RelatedVideos } from '@/components/RelatedVideos';
+import { Comments } from '@/components/Comments';
 
 interface Video {
   id: string;
@@ -94,6 +95,7 @@ export default function WatchPage() {
         <div className="lg:col-span-2">
           <VideoPlayer videoId={videoId} onPlay={incrementView} />
           <VideoMetadata video={video} />
+          <Comments videoId={videoId} />
         </div>
         
         {/* Sidebar with related videos */}
