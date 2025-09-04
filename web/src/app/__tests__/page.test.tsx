@@ -11,7 +11,7 @@ jest.mock('lucide-react', () => ({
 
 // Mock shadcn/ui Button component
 jest.mock('@/components/ui/button', () => ({
-  Button: ({ children, onClick, variant, size, className, ...props }: any) => (
+  Button: ({ children, onClick, variant, size, className, ...props }: React.ComponentProps<'button'>) => (
     <button
       onClick={onClick}
       className={className}

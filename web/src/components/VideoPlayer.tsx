@@ -185,12 +185,17 @@ export function VideoPlayer({ videoId, onPlay }: VideoPlayerProps) {
       video.removeEventListener('pause', handlePause);
       video.removeEventListener('volumechange', handleVolumeChange);
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [videoId]);
 
   const togglePlay = () => {
     const video = videoRef.current;
     if (!video) return;
-    isPlaying ? video.pause() : video.play();
+    if (isPlaying) {
+      video.pause();
+    } else {
+      video.play();
+    }
   };
 
   const toggleMute = () => {

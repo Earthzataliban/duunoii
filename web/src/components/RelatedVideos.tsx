@@ -112,6 +112,7 @@ export function RelatedVideos({ currentVideoId }: RelatedVideosProps) {
               <div className="flex gap-3 hover:bg-secondary/30 p-2 rounded-lg transition-colors">
                 {/* Thumbnail */}
                 <div className="relative w-40 h-24 bg-gray-200 rounded-md overflow-hidden flex-shrink-0">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
                     src={video.thumbnailUrl || generateThumbnailUrl(video.id)}
                     alt={video.title}
