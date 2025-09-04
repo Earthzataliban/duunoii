@@ -43,6 +43,27 @@ export class HLSService {
 
   constructor(private prisma: PrismaService) {}
 
+  private async checkAudioStream(filePath: string): Promise<boolean> {
+    return new Promise((resolve) => {
+      ffmpeg.ffprobe(filePath, (err, metadata) => {
+        if (err) {
+          this.logger.error(`FFprobe failed for ${filePath}:`, err);
+          resolve(false); // Assume no audio if ffprobe fails
+          return;
+        }
+
+        const hasAudio = metadata.streams.some(
+          (stream) => stream.codec_type === 'audio',
+        );
+
+        this.logger.log(
+          `Audio stream check for ${filePath}: ${hasAudio ? 'found' : 'not found'}`,
+        );
+        resolve(hasAudio);
+      });
+    });
+  }
+
   async generateHLSStreams(videoId: string): Promise<void> {
     try {
       this.logger.log(`Generating HLS streams for video ID: ${videoId}`);
@@ -56,28 +77,62 @@ export class HLSService {
         throw new Error(`Video with ID ${videoId} not found`);
       }
 
-      const inputPath = path.join(
-        process.cwd(),
+      // Check if the original video has audio stream
+      const originalVideoPath = path.resolve(
+        __dirname,
+        '..',
+        '..',
         'uploads',
         'videos',
         video.uploaderId,
         video.filename,
       );
 
-      // Create HLS output directory
-      const hlsDir = path.join(
-        process.cwd(),
+      const hasAudio = await this.checkAudioStream(originalVideoPath);
+
+      // Use processed video directory instead of original filename
+      const videoDir = path.resolve(
+        __dirname,
+        '..',
+        '..',
         'uploads',
         'videos',
         video.uploaderId,
         videoId,
-        'hls',
       );
+
+      // Find the highest quality processed video as input for HLS generation
+      // Try resolutions in order: 1080p, 720p, 360p
+      let inputPath: string | undefined;
+      const resolutions = ['1080p', '720p', '360p'];
+
+      for (const resolution of resolutions) {
+        const testPath = path.join(videoDir, `${videoId}-${resolution}.mp4`);
+        try {
+          await fs.access(testPath);
+          inputPath = testPath;
+          this.logger.log(
+            `Using ${resolution} video as HLS input: ${inputPath}`,
+          );
+          break;
+        } catch {
+          continue;
+        }
+      }
+
+      if (!inputPath) {
+        throw new Error(
+          `No processed video files found for video ID: ${videoId}`,
+        );
+      }
+
+      // Create HLS output directory
+      const hlsDir = path.join(videoDir, 'hls');
       await fs.mkdir(hlsDir, { recursive: true });
 
       // Generate HLS streams for each resolution
       const streamPromises = this.hlsConfigs.map((config) =>
-        this.generateHLSStream(inputPath, hlsDir, videoId, config),
+        this.generateHLSStream(inputPath, hlsDir, videoId, config, hasAudio),
       );
 
       await Promise.all(streamPromises);
@@ -102,6 +157,7 @@ export class HLSService {
     outputDir: string,
     videoId: string,
     config: HLSConfig,
+    hasAudio: boolean,
   ): Promise<void> {
     return new Promise((resolve, reject) => {
       const outputPath = path.join(outputDir, `${config.resolution}.m3u8`);
@@ -109,16 +165,26 @@ export class HLSService {
 
       this.logger.log(`Generating ${config.resolution} HLS stream`);
 
-      ffmpeg(inputPath)
+      // Set timeout for HLS generation (5 minutes)
+      const timeout = setTimeout(
+        () => {
+          this.logger.error(
+            `HLS generation timeout for ${config.resolution} after 5 minutes`,
+          );
+          reject(new Error(`HLS generation timeout for ${config.resolution}`));
+        },
+        5 * 60 * 1000,
+      );
+
+      const command = ffmpeg(inputPath)
         .size(`${config.width}x${config.height}`)
         .videoBitrate(config.bitrate)
-        .audioCodec('aac')
         .videoCodec('libx264')
         .outputOptions([
           '-preset',
-          'medium',
+          'medium', // Balance between speed and compression
           '-crf',
-          '23',
+          '23', // Constant rate factor for good quality
           '-sc_threshold',
           '0', // Disable scene change detection for consistent segment length
           '-g',
@@ -133,7 +199,18 @@ export class HLSService {
           segmentPath,
           '-f',
           'hls',
-        ])
+          '-threads',
+          '0', // Use all available CPU cores
+        ]);
+
+      // Only add audio codec if audio stream exists
+      if (hasAudio) {
+        command.audioCodec('aac');
+      } else {
+        command.outputOptions(['-an']); // No audio stream
+      }
+
+      command
         .output(outputPath)
         .on('start', (commandLine) => {
           this.logger.log(
@@ -148,10 +225,12 @@ export class HLSService {
           }
         })
         .on('end', () => {
+          clearTimeout(timeout);
           this.logger.log(`HLS stream completed: ${config.resolution}`);
           resolve();
         })
         .on('error', (err) => {
+          clearTimeout(timeout);
           this.logger.error(
             `HLS generation failed for ${config.resolution}:`,
             err,
@@ -198,8 +277,10 @@ export class HLSService {
       throw new Error(`Video with ID ${videoId} not found`);
     }
 
-    const masterPlaylistPath = path.join(
-      process.cwd(),
+    const masterPlaylistPath = path.resolve(
+      __dirname,
+      '..',
+      '..',
       'uploads',
       'videos',
       video.uploaderId,
@@ -226,8 +307,10 @@ export class HLSService {
       throw new Error(`Video with ID ${videoId} not found`);
     }
 
-    const playlistPath = path.join(
-      process.cwd(),
+    const playlistPath = path.resolve(
+      __dirname,
+      '..',
+      '..',
       'uploads',
       'videos',
       video.uploaderId,
@@ -256,8 +339,10 @@ export class HLSService {
       throw new Error(`Video with ID ${videoId} not found`);
     }
 
-    const segmentPath = path.join(
-      process.cwd(),
+    const segmentPath = path.resolve(
+      __dirname,
+      '..',
+      '..',
       'uploads',
       'videos',
       video.uploaderId,
@@ -287,8 +372,10 @@ export class HLSService {
         return false;
       }
 
-      const masterPlaylistPath = path.join(
-        process.cwd(),
+      const masterPlaylistPath = path.resolve(
+        __dirname,
+        '..',
+        '..',
         'uploads',
         'videos',
         video.uploaderId,

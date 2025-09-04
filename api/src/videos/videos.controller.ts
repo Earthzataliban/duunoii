@@ -146,4 +146,18 @@ export class VideosController {
       throw new HttpException('File not found', HttpStatus.NOT_FOUND);
     }
   }
+
+  @Post(':id/regenerate-hls')
+  @UseGuards(JwtAuthGuard)
+  async regenerateHLS(@Param('id') id: string) {
+    try {
+      await this.hlsService.generateHLSStreams(id);
+      return { success: true, message: 'HLS streams regenerated successfully' };
+    } catch {
+      throw new HttpException(
+        'Failed to regenerate HLS streams',
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+  }
 }

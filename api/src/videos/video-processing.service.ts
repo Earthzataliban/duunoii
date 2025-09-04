@@ -58,8 +58,11 @@ export class VideoProcessingService {
         throw new Error(`Video with ID ${videoId} not found`);
       }
 
-      const inputPath = path.join(
-        process.cwd(),
+      // Use absolute path to ensure we find the uploaded file
+      const inputPath = path.resolve(
+        __dirname,
+        '..',
+        '..',
         'uploads',
         'videos',
         video.uploaderId,
@@ -70,8 +73,10 @@ export class VideoProcessingService {
       await fs.access(inputPath);
 
       // Create output directory for processed videos
-      const outputDir = path.join(
-        process.cwd(),
+      const outputDir = path.resolve(
+        __dirname,
+        '..',
+        '..',
         'uploads',
         'videos',
         video.uploaderId,
@@ -92,6 +97,7 @@ export class VideoProcessingService {
         inputPath,
         outputDir,
         videoId,
+        metadata.hasAudio,
       );
 
       // Update video record with metadata and processed files
@@ -124,9 +130,12 @@ export class VideoProcessingService {
     }
   }
 
-  private async getVideoMetadata(
-    inputPath: string,
-  ): Promise<{ duration: number; width?: number; height?: number }> {
+  private async getVideoMetadata(inputPath: string): Promise<{
+    duration: number;
+    width?: number;
+    height?: number;
+    hasAudio: boolean;
+  }> {
     return new Promise((resolve, reject) => {
       ffmpeg.ffprobe(inputPath, (err, metadata) => {
         if (err) {
@@ -138,10 +147,15 @@ export class VideoProcessingService {
           (stream) => stream.codec_type === 'video',
         );
 
+        const audioStream = metadata.streams.find(
+          (stream) => stream.codec_type === 'audio',
+        );
+
         resolve({
           duration: Math.floor(metadata.format.duration || 0),
           width: videoStream?.width,
           height: videoStream?.height,
+          hasAudio: !!audioStream,
         });
       });
     });
@@ -178,6 +192,7 @@ export class VideoProcessingService {
     inputPath: string,
     outputDir: string,
     videoId: string,
+    hasAudio: boolean,
   ): Promise<
     Array<{
       resolution: string;
@@ -203,7 +218,12 @@ export class VideoProcessingService {
         const outputFilename = `${videoId}-${config.resolution}.mp4`;
         const outputPath = path.join(outputDir, outputFilename);
 
-        await this.transcodeToResolution(inputPath, outputPath, config);
+        await this.transcodeToResolution(
+          inputPath,
+          outputPath,
+          config,
+          hasAudio,
+        );
 
         // Get file size
         const stats = await fs.stat(outputPath);
@@ -243,12 +263,23 @@ export class VideoProcessingService {
     inputPath: string,
     outputPath: string,
     config: ProcessingOptions,
+    hasAudio: boolean,
   ): Promise<void> {
     return new Promise((resolve, reject) => {
-      ffmpeg(inputPath)
+      // Set timeout for large file processing (10 minutes)
+      const timeout = setTimeout(
+        () => {
+          this.logger.error(
+            `Transcoding timeout for ${config.resolution} after 10 minutes`,
+          );
+          reject(new Error(`Transcoding timeout for ${config.resolution}`));
+        },
+        10 * 60 * 1000,
+      );
+
+      const command = ffmpeg(inputPath)
         .size(`${config.width}x${config.height}`)
         .videoBitrate(config.bitrate)
-        .audioCodec('aac')
         .videoCodec('libx264')
         .format('mp4')
         .outputOptions([
@@ -258,7 +289,18 @@ export class VideoProcessingService {
           '23', // Constant rate factor for good quality
           '-movflags',
           '+faststart', // Enable progressive download
-        ])
+          '-threads',
+          '0', // Use all available CPU cores
+        ]);
+
+      // Only add audio codec if audio stream exists
+      if (hasAudio) {
+        command.audioCodec('aac');
+      } else {
+        command.outputOptions(['-an']); // No audio stream
+      }
+
+      command
         .output(outputPath)
         .on('start', (commandLine: string) => {
           this.logger.log(`FFmpeg command: ${commandLine}`);
@@ -271,10 +313,12 @@ export class VideoProcessingService {
           }
         })
         .on('end', () => {
+          clearTimeout(timeout);
           this.logger.log(`Transcoding completed: ${outputPath}`);
           resolve();
         })
         .on('error', (err: Error) => {
+          clearTimeout(timeout);
           this.logger.error('Transcoding failed:', err);
           reject(err);
         })

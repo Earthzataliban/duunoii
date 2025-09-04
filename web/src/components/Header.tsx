@@ -89,27 +89,27 @@ export function Header({ onMenuClick, isDarkMode = true, onThemeToggle }: Header
             {/* Auth Section */}
             {isAuthenticated && user ? (
               <>
-                <Button 
-                  variant="outline" 
+                <Button
+                  variant="outline"
                   size="sm"
                 >
                   Upload Video
                 </Button>
-                
+
                 <DropdownMenu.Root>
                   <DropdownMenu.Trigger asChild>
-                    <Button 
-                      variant="ghost" 
-                      size="sm" 
+                    <Button
+                      variant="ghost"
+                      size="sm"
                       className="flex items-center space-x-2"
                     >
                       <User className="h-4 w-4" />
                       <span className="hidden sm:inline">{user.displayName || user.username}</span>
                     </Button>
                   </DropdownMenu.Trigger>
-                  
+
                   <DropdownMenu.Portal>
-                    <DropdownMenu.Content 
+                    <DropdownMenu.Content
                       className="rounded-md shadow-lg border border-border bg-popover p-2 w-48 z-50"
                       sideOffset={5}
                     >
@@ -117,20 +117,20 @@ export function Header({ onMenuClick, isDarkMode = true, onThemeToggle }: Header
                         <User className="h-4 w-4" />
                         <span>Profile</span>
                       </DropdownMenu.Item>
-                      
+
                       <DropdownMenu.Item className={cn(
                         'flex items-center space-x-2 px-3 py-2 text-sm rounded cursor-pointer',
-                        isDarkMode 
-                          ? 'text-white hover:bg-gray-700' 
+                        isDarkMode
+                          ? 'text-white hover:bg-gray-700'
                           : 'text-gray-900 hover:bg-gray-100'
                       )}>
                         <Video className="h-4 w-4" />
                         <span>My Videos</span>
                       </DropdownMenu.Item>
-                      
+
                       <DropdownMenu.Separator className="h-px my-1 bg-border" />
-                      
-                      <DropdownMenu.Item 
+
+                      <DropdownMenu.Item
                         className="flex items-center space-x-2 px-3 py-2 text-sm rounded cursor-pointer text-red-500 hover:bg-red-50"
                         onSelect={logout}
                       >
@@ -143,17 +143,17 @@ export function Header({ onMenuClick, isDarkMode = true, onThemeToggle }: Header
               </>
             ) : (
               <div className="flex items-center space-x-2">
-                <Button 
-                  variant="ghost" 
-                  size="sm" 
+                <Button
+                  variant="ghost"
+                  size="sm"
                   onClick={openLoginModal}
                 >
                   Sign In
                 </Button>
-                <Button 
-                  size="sm" 
+                <Button
+                  size="sm"
                   onClick={openRegisterModal}
-                  className="bg-blue-600 hover:bg-blue-700 text-white"
+                  className="bg-black hover:bg-gray-800 text-white dark:bg-white dark:text-black dark:hover:bg-gray-200"
                 >
                   Sign Up
                 </Button>
