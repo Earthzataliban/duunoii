@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { formatDistanceToNow } from 'date-fns';
-import { Eye, Clock, User } from 'lucide-react';
+import { Eye, Clock } from 'lucide-react';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 
 interface VideoCardProps {
@@ -24,7 +24,6 @@ interface VideoCardProps {
 export function VideoCard({
   id,
   title,
-  description,
   thumbnailUrl,
   duration,
   views,
@@ -71,6 +70,7 @@ export function VideoCard({
       <Link href={`/watch/${id}`}>
         {/* Thumbnail Container */}
         <div className="relative aspect-video bg-muted rounded-lg overflow-hidden mb-3">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src={thumbnailUrl}
             alt={title}

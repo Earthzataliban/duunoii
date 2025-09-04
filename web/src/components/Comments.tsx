@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { MessageCircle, Reply, Edit3, Trash2, Send } from 'lucide-react';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 
@@ -36,10 +36,6 @@ export function Comments({ videoId }: CommentsProps) {
   const [editingComment, setEditingComment] = useState<string | null>(null);
   const [editContent, setEditContent] = useState('');
 
-  useEffect(() => {
-    loadComments();
-  }, [videoId]);
-
   const getAuthToken = () => {
     return localStorage.getItem('token');
   };
@@ -56,7 +52,7 @@ export function Comments({ videoId }: CommentsProps) {
     }
   };
 
-  const loadComments = async () => {
+  const loadComments = useCallback(async () => {
     try {
       const response = await fetch(`http://localhost:8080/videos/${videoId}/comments`);
       if (response.ok) {
@@ -68,7 +64,11 @@ export function Comments({ videoId }: CommentsProps) {
     } finally {
       setLoading(false);
     }
-  };
+  }, [videoId]);
+
+  useEffect(() => {
+    loadComments();
+  }, [loadComments]);
 
   const handleSubmitComment = async (e: React.FormEvent) => {
     e.preventDefault();

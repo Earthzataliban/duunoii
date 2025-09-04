@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { VideoCard } from './VideoCard';
 import { Button } from '@/components/ui/button';
 import { RefreshCw, AlertCircle } from 'lucide-react';
@@ -33,11 +33,7 @@ export function VideoGrid({ className, limit = 12, userId, title = 'Latest Video
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
 
-  useEffect(() => {
-    loadVideos(1, true);
-  }, [userId, limit]);
-
-  const loadVideos = async (pageNum: number = 1, reset: boolean = false) => {
+  const loadVideos = useCallback(async (pageNum: number = 1, reset: boolean = false) => {
     try {
       setLoading(true);
       setError(null);
@@ -72,7 +68,11 @@ export function VideoGrid({ className, limit = 12, userId, title = 'Latest Video
     } finally {
       setLoading(false);
     }
-  };
+  }, [userId, limit]);
+
+  useEffect(() => {
+    loadVideos(1, true);
+  }, [userId, limit, loadVideos]);
 
   const loadMore = () => {
     if (!loading && hasMore) {

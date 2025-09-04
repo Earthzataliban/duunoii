@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { ThumbsUp, ThumbsDown, Share2, MoreHorizontal, Eye, Calendar } from 'lucide-react';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 
@@ -32,16 +32,11 @@ export function VideoMetadata({ video }: VideoMetadataProps) {
   const [subscriberCount, setSubscriberCount] = useState(0);
   const [loading, setLoading] = useState(false);
 
-  // Load like status and counts on component mount
-  useEffect(() => {
-    loadVideoStats();
-  }, [video.id]);
-
   const getAuthToken = () => {
     return localStorage.getItem('token');
   };
 
-  const loadVideoStats = async () => {
+  const loadVideoStats = useCallback(async () => {
     try {
       // Load like status (requires auth)
       const token = getAuthToken();
@@ -74,7 +69,12 @@ export function VideoMetadata({ video }: VideoMetadataProps) {
     } catch (error) {
       console.error('Failed to load video stats:', error);
     }
-  };
+  }, [video.id, video.uploader.id]);
+
+  // Load like status and counts on component mount
+  useEffect(() => {
+    loadVideoStats();
+  }, [loadVideoStats]);
 
   const formatViews = (views: number) => {
     if (views >= 1000000) {

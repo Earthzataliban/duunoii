@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { AuthService } from '@/lib/auth';
@@ -15,11 +15,8 @@ import {
   Trash2, 
   Plus, 
   Search,
-  Filter,
-  MoreVertical,
   Play,
-  Clock,
-  TrendingUp
+  Clock
 } from 'lucide-react';
 import Link from 'next/link';
 import { formatDistanceToNow } from 'date-fns';
@@ -45,7 +42,7 @@ interface DashboardStats {
 }
 
 export default function DashboardPage() {
-  const { user, isAuthenticated } = useAuth();
+  const { isAuthenticated } = useAuth();
   const router = useRouter();
   
   const [videos, setVideos] = useState<VideoData[]>([]);
@@ -66,9 +63,10 @@ export default function DashboardPage() {
     }
     
     loadDashboardData();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isAuthenticated, router]);
 
-  const loadDashboardData = async () => {
+  const loadDashboardData = useCallback(async () => {
     try {
       setLoading(true);
       const token = AuthService.getToken();
@@ -104,7 +102,7 @@ export default function DashboardPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [router]);
 
   const handleDeleteVideo = async (videoId: string) => {
     if (!confirm('Are you sure you want to delete this video? This action cannot be undone.')) {
@@ -299,6 +297,7 @@ export default function DashboardPage() {
                 <div key={video.id} className="p-6 flex gap-4 hover:bg-muted/5 transition-colors">
                   {/* Thumbnail */}
                   <div className="relative w-32 h-20 bg-muted rounded overflow-hidden flex-shrink-0">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img
                       src={`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080'}/videos/${video.id}/thumbnail`}
                       alt={video.title}

@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Play, TrendingUp, Clock, Upload } from 'lucide-react';
+import { Upload } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { VideoGrid } from '@/components/VideoGrid';
 import Link from 'next/link';
