@@ -69,8 +69,8 @@ export function RelatedVideos({ currentVideoId }: RelatedVideosProps) {
   };
 
   const generateThumbnailUrl = (videoId: string) => {
-    // Generate a placeholder thumbnail using a service like DiceBear or a simple colored rectangle
-    return `https://api.dicebear.com/7.x/shapes/svg?seed=${videoId}&backgroundColor=1e293b&size=320`;
+    // Use our API endpoint for thumbnail
+    return `http://localhost:8080/videos/${videoId}/thumbnail`;
   };
 
   if (loading) {
@@ -114,9 +114,13 @@ export function RelatedVideos({ currentVideoId }: RelatedVideosProps) {
                 <div className="relative w-40 h-24 bg-gray-200 rounded-md overflow-hidden flex-shrink-0">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
-                    src={video.thumbnailUrl || generateThumbnailUrl(video.id)}
+                    src={generateThumbnailUrl(video.id)}
                     alt={video.title}
                     className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200"
+                    onError={(e) => {
+                      // Fallback to placeholder if thumbnail fails to load
+                      (e.target as HTMLImageElement).src = `https://api.dicebear.com/7.x/shapes/svg?seed=${video.id}&backgroundColor=1e293b&size=320`;
+                    }}
                   />
                   
                   {/* Duration overlay */}

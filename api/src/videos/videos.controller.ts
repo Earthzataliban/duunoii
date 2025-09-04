@@ -147,6 +147,18 @@ export class VideosController {
     }
   }
 
+  @Get(':id/thumbnail')
+  async getThumbnail(@Param('id') id: string, @Res() res: Response) {
+    try {
+      const thumbnailBuffer = await this.videosService.getThumbnail(id);
+      res.setHeader('Content-Type', 'image/jpeg');
+      res.setHeader('Cache-Control', 'public, max-age=86400'); // Cache for 1 day
+      res.send(thumbnailBuffer);
+    } catch {
+      throw new HttpException('Thumbnail not found', HttpStatus.NOT_FOUND);
+    }
+  }
+
   @Post(':id/regenerate-hls')
   @UseGuards(JwtAuthGuard)
   async regenerateHLS(@Param('id') id: string) {

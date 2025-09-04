@@ -269,4 +269,48 @@ export class VideosService {
   async getQueueStats() {
     return await this.videoQueueService.getQueueStats();
   }
+
+  async getThumbnail(id: string) {
+    // Get video information
+    const video = await this.prisma.video.findUnique({
+      where: { id },
+      select: {
+        id: true,
+        thumbnailUrl: true,
+        uploaderId: true,
+      },
+    });
+
+    if (!video) {
+      throw new NotFoundException('Video not found');
+    }
+
+    if (!video.thumbnailUrl) {
+      throw new NotFoundException('Thumbnail not available');
+    }
+
+    // If thumbnailUrl is a full path, use it directly
+    // Otherwise, construct the path
+    let thumbnailPath: string;
+    if (path.isAbsolute(video.thumbnailUrl)) {
+      thumbnailPath = video.thumbnailUrl;
+    } else {
+      // Construct path relative to uploads directory
+      thumbnailPath = path.join(
+        process.cwd(),
+        'uploads',
+        'videos',
+        video.uploaderId,
+        video.id,
+        `${video.id}-thumbnail.jpg`,
+      );
+    }
+
+    try {
+      const thumbnailBuffer = await fs.readFile(thumbnailPath);
+      return thumbnailBuffer;
+    } catch (error) {
+      throw new NotFoundException('Thumbnail file not found');
+    }
+  }
 }
