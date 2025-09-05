@@ -50,7 +50,7 @@ export class UploadProgressService {
       this.reconnectAttempts = 0;
     });
 
-    this.socket.on('disconnect', (reason) => {
+    this.socket.on('disconnect', (reason: string) => {
       console.log('Disconnected from WebSocket server:', reason);
       
       // Auto-reconnect if disconnect wasn't intentional
@@ -62,7 +62,7 @@ export class UploadProgressService {
       this.handleReconnect();
     });
 
-    this.socket.on('connect_error', (error) => {
+    this.socket.on('connect_error', (error: Error) => {
       console.error('WebSocket connection error:', error);
       this.handleReconnect();
     });
