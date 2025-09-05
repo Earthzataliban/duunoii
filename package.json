@@ -50,7 +50,7 @@
   "author": "Your Name",
   "license": "MIT",
   "devDependencies": {
-    "concurrently": "^8.2.2"
+    "concurrently": "^9.2.1"
   },
   "dependencies": {
     "socket.io-client": "^4.7.5"
