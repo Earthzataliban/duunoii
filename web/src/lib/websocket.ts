@@ -135,7 +135,7 @@ export class UploadProgressService {
   }
 
   // Notify server about upload start
-  startUpload(uploadId: string, userId: string, fileSize: number) {
+  startUpload(uploadId: string, userId: string, fileSize: number): void {
     if (!this.socket) {
       console.error('WebSocket not connected');
       return;
@@ -150,7 +150,7 @@ export class UploadProgressService {
   }
 
   // Send upload progress update
-  updateUploadProgress(uploadId: string, progress: Partial<ProgressUpdate>) {
+  updateUploadProgress(uploadId: string, progress: Partial<ProgressUpdate>): void {
     if (!this.socket) {
       console.error('WebSocket not connected');
       return;

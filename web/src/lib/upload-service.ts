@@ -137,7 +137,7 @@ export class EnhancedUploadService {
             }
 
             const progressData: ProgressUpdate = {
-              videoId: videoId,
+              videoId: videoId || '',
               stage: 'validating',
               uploadProgress: 100,
               processingProgress: 0,
@@ -147,14 +147,16 @@ export class EnhancedUploadService {
 
             options.onProgress?.(progressData);
             
-            if (userId) {
+            if (userId && videoId) {
               progressService.updateUploadProgress(videoId, progressData);
             }
 
             // Start polling for processing status
-            this.pollProcessingStatus(videoId, options, userId);
+            if (videoId) {
+              this.pollProcessingStatus(videoId, options, userId);
+            }
             
-            resolve({ videoId: videoId, success: true });
+            resolve({ videoId: videoId || '', success: true });
           } catch (error) {
             const errorMsg = error instanceof Error ? error.message : 'Failed to parse server response';
             this.handleError(uploadId, errorMsg, options, userId);

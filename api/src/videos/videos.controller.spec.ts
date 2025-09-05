@@ -86,7 +86,7 @@ describe('VideosController', () => {
 
       mockVideosService.create.mockResolvedValue(expectedResult);
 
-      const req = { user: { userId: 'user-123' } };
+      const req = { user: { userId: 'user-123' } } as any;
       const result = await controller.uploadVideo(
         mockFile,
         createVideoDto,
@@ -107,7 +107,7 @@ describe('VideosController', () => {
         description: 'Test description',
       };
 
-      const req = { user: { userId: 'user-123' } };
+      const req = { user: { userId: 'user-123' } } as any;
 
       await expect(
         controller.uploadVideo(undefined as any, createVideoDto, req),
@@ -137,7 +137,14 @@ describe('VideosController', () => {
 
       const result = await controller.findAll('1', '10');
 
-      expect(service.findAll).toHaveBeenCalledWith(undefined, 1, 10);
+      expect(service.findAll).toHaveBeenCalledWith({
+        userId: undefined,
+        page: 1,
+        limit: 10,
+        category: undefined,
+        search: undefined,
+        sortBy: 'newest',
+      });
       expect(result).toEqual(expectedResult);
     });
   });
@@ -162,10 +169,15 @@ describe('VideosController', () => {
 
       mockVideosService.findAll.mockResolvedValue(expectedResult);
 
-      const req = { user: { userId: 'user-123' } };
+      const req = { user: { userId: 'user-123' } } as any;
       const result = await controller.findMyVideos(req, '1', '10');
 
-      expect(service.findAll).toHaveBeenCalledWith('user-123', 1, 10);
+      expect(service.findAll).toHaveBeenCalledWith({
+        userId: 'user-123',
+        page: 1,
+        limit: 10,
+        sortBy: 'newest',
+      });
       expect(result).toEqual(expectedResult);
     });
   });
@@ -198,7 +210,7 @@ describe('VideosController', () => {
 
       mockVideosService.update.mockResolvedValue(expectedResult);
 
-      const req = { user: { userId: 'user-123' } };
+      const req = { user: { userId: 'user-123' } } as any;
       const result = await controller.update('video-1', updateDto, req);
 
       expect(service.update).toHaveBeenCalledWith(
@@ -216,7 +228,7 @@ describe('VideosController', () => {
 
       mockVideosService.remove.mockResolvedValue(expectedResult);
 
-      const req = { user: { userId: 'user-123' } };
+      const req = { user: { userId: 'user-123' } } as any;
       const result = await controller.remove('video-1', req);
 
       expect(service.remove).toHaveBeenCalledWith('video-1', 'user-123');
