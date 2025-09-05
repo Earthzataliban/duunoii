@@ -88,7 +88,7 @@ export function VideoEditModal({ video, isOpen, onClose, onVideoUpdated }: Video
         throw new Error('Failed to update video');
       }
 
-      const updatedVideo = await response.json();
+      await response.json();
       
       // Call the callback with updated data
       onVideoUpdated({

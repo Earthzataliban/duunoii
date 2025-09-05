@@ -95,7 +95,10 @@ export class UsersController {
     @Param('id') subscribedToId: string,
     @Request() req: AuthenticatedRequest,
   ) {
-    return this.usersService.unsubscribeFromUser(req.user.userId, subscribedToId);
+    return this.usersService.unsubscribeFromUser(
+      req.user.userId,
+      subscribedToId,
+    );
   }
 
   @Get(':id/subscription-status')
@@ -104,7 +107,10 @@ export class UsersController {
     @Param('id') subscribedToId: string,
     @Request() req: AuthenticatedRequest,
   ) {
-    return this.usersService.getSubscriptionStatus(req.user.userId, subscribedToId);
+    return this.usersService.getSubscriptionStatus(
+      req.user.userId,
+      subscribedToId,
+    );
   }
 
   @Get('me/subscriptions')
@@ -116,7 +122,11 @@ export class UsersController {
   ) {
     const parsedPage = page ? parseInt(page) || 1 : 1;
     const parsedLimit = limit ? parseInt(limit) || 10 : 10;
-    return this.usersService.getUserSubscriptions(req.user.userId, parsedPage, parsedLimit);
+    return this.usersService.getUserSubscriptions(
+      req.user.userId,
+      parsedPage,
+      parsedLimit,
+    );
   }
 
   @Get(':id/subscribers')
@@ -127,7 +137,11 @@ export class UsersController {
   ) {
     const parsedPage = page ? parseInt(page) || 1 : 1;
     const parsedLimit = limit ? parseInt(limit) || 10 : 10;
-    return this.usersService.getUserSubscribers(userId, parsedPage, parsedLimit);
+    return this.usersService.getUserSubscribers(
+      userId,
+      parsedPage,
+      parsedLimit,
+    );
   }
 
   @Get(':id/subscriptions')
@@ -138,6 +152,10 @@ export class UsersController {
   ) {
     const parsedPage = page ? parseInt(page) || 1 : 1;
     const parsedLimit = limit ? parseInt(limit) || 10 : 10;
-    return this.usersService.getUserSubscriptions(userId, parsedPage, parsedLimit);
+    return this.usersService.getUserSubscriptions(
+      userId,
+      parsedPage,
+      parsedLimit,
+    );
   }
 }

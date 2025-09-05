@@ -12,7 +12,14 @@ import { Logger } from '@nestjs/common';
 
 export interface ProgressUpdate {
   videoId: string;
-  stage: 'uploading' | 'validating' | 'processing' | 'encoding' | 'finalizing' | 'completed' | 'error';
+  stage:
+    | 'uploading'
+    | 'validating'
+    | 'processing'
+    | 'encoding'
+    | 'finalizing'
+    | 'completed'
+    | 'error';
   uploadProgress?: number;
   processingProgress?: number;
   overallProgress: number;
@@ -44,14 +51,16 @@ interface ClientInfo {
   },
   namespace: '/',
 })
-export class UploadProgressGateway implements OnGatewayConnection, OnGatewayDisconnect {
+export class UploadProgressGateway
+  implements OnGatewayConnection, OnGatewayDisconnect
+{
   @WebSocketServer()
   server: Server;
 
   private readonly logger = new Logger(UploadProgressGateway.name);
   private clients = new Map<string, ClientInfo>();
 
-  afterInit(server: Server) {
+  afterInit() {
     this.logger.log('WebSocket Gateway initialized');
   }
 
@@ -62,24 +71,24 @@ export class UploadProgressGateway implements OnGatewayConnection, OnGatewayDisc
     });
 
     // Send connection confirmation
-    client.emit('connected', { 
+    client.emit('connected', {
       message: 'Connected to upload progress server',
-      timestamp: Date.now() 
+      timestamp: Date.now(),
     });
   }
 
   handleDisconnect(client: Socket) {
     this.logger.log(`Client disconnected: ${client.id}`);
-    
+
     // Clean up client rooms
     const clientInfo = this.clients.get(client.id);
     if (clientInfo) {
       // Leave all upload rooms
-      clientInfo.uploadRooms.forEach(room => {
-        client.leave(room);
-      });
+      for (const room of clientInfo.uploadRooms) {
+        void client.leave(room);
+      }
     }
-    
+
     this.clients.delete(client.id);
   }
 
@@ -89,19 +98,19 @@ export class UploadProgressGateway implements OnGatewayConnection, OnGatewayDisc
     @ConnectedSocket() client: Socket,
   ) {
     const roomName = `upload-${uploadId}`;
-    client.join(roomName);
-    
+    void client.join(roomName);
+
     const clientInfo = this.clients.get(client.id);
     if (clientInfo) {
       clientInfo.uploadRooms.add(roomName);
     }
-    
+
     this.logger.log(`Client ${client.id} joined upload room: ${roomName}`);
-    
-    client.emit('joined-upload', { 
-      uploadId, 
+
+    client.emit('joined-upload', {
+      uploadId,
       room: roomName,
-      timestamp: Date.now() 
+      timestamp: Date.now(),
     });
   }
 
@@ -111,13 +120,13 @@ export class UploadProgressGateway implements OnGatewayConnection, OnGatewayDisc
     @ConnectedSocket() client: Socket,
   ) {
     const roomName = `upload-${uploadId}`;
-    client.leave(roomName);
-    
+    void client.leave(roomName);
+
     const clientInfo = this.clients.get(client.id);
     if (clientInfo) {
       clientInfo.uploadRooms.delete(roomName);
     }
-    
+
     this.logger.log(`Client ${client.id} left upload room: ${roomName}`);
   }
 
@@ -127,19 +136,21 @@ export class UploadProgressGateway implements OnGatewayConnection, OnGatewayDisc
     @ConnectedSocket() client: Socket,
   ) {
     const roomName = `user-uploads-${userId}`;
-    client.join(roomName);
-    
+    void client.join(roomName);
+
     const clientInfo = this.clients.get(client.id);
     if (clientInfo) {
       clientInfo.userId = userId;
     }
-    
-    this.logger.log(`Client ${client.id} joined user uploads room: ${roomName}`);
-    
-    client.emit('joined-user-uploads', { 
-      userId, 
+
+    this.logger.log(
+      `Client ${client.id} joined user uploads room: ${roomName}`,
+    );
+
+    client.emit('joined-user-uploads', {
+      userId,
       room: roomName,
-      timestamp: Date.now() 
+      timestamp: Date.now(),
     });
   }
 
@@ -149,18 +160,15 @@ export class UploadProgressGateway implements OnGatewayConnection, OnGatewayDisc
     @ConnectedSocket() client: Socket,
   ) {
     const roomName = `user-uploads-${userId}`;
-    client.leave(roomName);
-    
+    void client.leave(roomName);
+
     this.logger.log(`Client ${client.id} left user uploads room: ${roomName}`);
   }
 
   @SubscribeMessage('upload-start')
-  handleUploadStart(
-    @MessageBody() data: UploadStartEvent,
-    @ConnectedSocket() client: Socket,
-  ) {
+  handleUploadStart(@MessageBody() data: UploadStartEvent) {
     this.logger.log(`Upload started: ${data.uploadId} by user ${data.userId}`);
-    
+
     // Broadcast to upload room
     const uploadRoom = `upload-${data.uploadId}`;
     this.server.to(uploadRoom).emit('upload-started', {
@@ -169,7 +177,7 @@ export class UploadProgressGateway implements OnGatewayConnection, OnGatewayDisc
       fileSize: data.fileSize,
       timestamp: data.timestamp,
     });
-    
+
     // Broadcast to user uploads room
     const userRoom = `user-uploads-${data.userId}`;
     this.server.to(userRoom).emit('user-upload-started', {
@@ -182,10 +190,9 @@ export class UploadProgressGateway implements OnGatewayConnection, OnGatewayDisc
   @SubscribeMessage('upload-progress-update')
   handleUploadProgressUpdate(
     @MessageBody() progress: ProgressUpdate & { uploadId: string },
-    @ConnectedSocket() client: Socket,
   ) {
     const { uploadId, ...progressData } = progress;
-    
+
     // Broadcast to specific upload room
     const uploadRoom = `upload-${uploadId}`;
     this.server.to(uploadRoom).emit('upload-progress', {
@@ -193,30 +200,38 @@ export class UploadProgressGateway implements OnGatewayConnection, OnGatewayDisc
       videoId: uploadId,
       timestamp: progress.timestamp || Date.now(),
     });
-    
+
     // Also broadcast to user uploads room if we can determine the user
     // This would require tracking userId per upload, which we could add to the upload start event
-    this.logger.debug(`Progress update for upload ${uploadId}: ${progressData.stage} - ${progressData.overallProgress}%`);
+    this.logger.debug(
+      `Progress update for upload ${uploadId}: ${progressData.stage} - ${progressData.overallProgress}%`,
+    );
   }
 
   // Method to broadcast progress from the backend services
-  broadcastProgress(uploadId: string, userId: string, progress: ProgressUpdate) {
+  broadcastProgress(
+    uploadId: string,
+    userId: string,
+    progress: ProgressUpdate,
+  ) {
     const uploadRoom = `upload-${uploadId}`;
     const userRoom = `user-uploads-${userId}`;
-    
+
     const progressData = {
       ...progress,
       videoId: uploadId,
       timestamp: Date.now(),
     };
-    
+
     // Send to specific upload room
     this.server.to(uploadRoom).emit('upload-progress', progressData);
-    
+
     // Send to user's uploads room
     this.server.to(userRoom).emit('user-upload-progress', progressData);
-    
-    this.logger.debug(`Broadcasting progress for ${uploadId}: ${progress.stage} - ${progress.overallProgress}%`);
+
+    this.logger.debug(
+      `Broadcasting progress for ${uploadId}: ${progress.stage} - ${progress.overallProgress}%`,
+    );
   }
 
   // Method to broadcast to all connected clients (for global notifications)
@@ -235,15 +250,15 @@ export class UploadProgressGateway implements OnGatewayConnection, OnGatewayDisc
   // Method to get active upload rooms
   getActiveUploads(): string[] {
     const activeUploads = new Set<string>();
-    
-    this.clients.forEach(clientInfo => {
-      clientInfo.uploadRooms.forEach(room => {
+
+    this.clients.forEach((clientInfo) => {
+      clientInfo.uploadRooms.forEach((room) => {
         if (room.startsWith('upload-')) {
           activeUploads.add(room.replace('upload-', ''));
         }
       });
     });
-    
+
     return Array.from(activeUploads);
   }
 }

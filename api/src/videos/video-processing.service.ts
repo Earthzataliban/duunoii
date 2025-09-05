@@ -109,7 +109,7 @@ export class VideoProcessingService {
 
       // Extract video metadata and generate thumbnail
       const metadata = await this.getVideoMetadata(inputPath);
-      
+
       // Broadcast thumbnail generation progress
       this.uploadProgressGateway.broadcastProgress(videoId, video.uploaderId, {
         videoId,
@@ -119,7 +119,7 @@ export class VideoProcessingService {
         overallProgress: 50,
         currentTask: 'Generating video thumbnail...',
       });
-      
+
       const thumbnailPath = await this.generateThumbnail(
         inputPath,
         outputDir,
@@ -185,19 +185,26 @@ export class VideoProcessingService {
       // Get video info for error broadcasting
       const video = await this.prisma.video.findUnique({
         where: { id: videoId },
-        select: { uploaderId: true }
+        select: { uploaderId: true },
       });
 
       // Broadcast error
       if (video) {
-        this.uploadProgressGateway.broadcastProgress(videoId, video.uploaderId, {
+        this.uploadProgressGateway.broadcastProgress(
           videoId,
-          stage: 'error',
-          uploadProgress: 0,
-          processingProgress: 0,
-          overallProgress: 0,
-          error: error instanceof Error ? error.message : 'Video processing failed',
-        });
+          video.uploaderId,
+          {
+            videoId,
+            stage: 'error',
+            uploadProgress: 0,
+            processingProgress: 0,
+            overallProgress: 0,
+            error:
+              error instanceof Error
+                ? error.message
+                : 'Video processing failed',
+          },
+        );
       }
 
       // Update video status to FAILED

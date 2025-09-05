@@ -197,7 +197,11 @@ export class VideosController {
     @Body() createCommentDto: CreateCommentDto,
     @Request() req: AuthenticatedRequest,
   ) {
-    return this.videosService.createComment(id, req.user.userId, createCommentDto);
+    return this.videosService.createComment(
+      id,
+      req.user.userId,
+      createCommentDto,
+    );
   }
 
   @Get(':id/comments')
@@ -210,7 +214,12 @@ export class VideosController {
     const parsedPage = page ? parseInt(page) || 1 : 1;
     const parsedLimit = limit ? parseInt(limit) || 10 : 10;
     const sortBy = sort || 'newest';
-    return this.videosService.getVideoComments(id, parsedPage, parsedLimit, sortBy);
+    return this.videosService.getVideoComments(
+      id,
+      parsedPage,
+      parsedLimit,
+      sortBy,
+    );
   }
 
   @Get('comments/:commentId/replies')
@@ -221,7 +230,11 @@ export class VideosController {
   ) {
     const parsedPage = page ? parseInt(page) || 1 : 1;
     const parsedLimit = limit ? parseInt(limit) || 10 : 10;
-    return this.videosService.getCommentReplies(commentId, parsedPage, parsedLimit);
+    return this.videosService.getCommentReplies(
+      commentId,
+      parsedPage,
+      parsedLimit,
+    );
   }
 
   @Patch('comments/:commentId')
@@ -231,7 +244,11 @@ export class VideosController {
     @Body() updateCommentDto: UpdateCommentDto,
     @Request() req: AuthenticatedRequest,
   ) {
-    return this.videosService.updateComment(commentId, req.user.userId, updateCommentDto);
+    return this.videosService.updateComment(
+      commentId,
+      req.user.userId,
+      updateCommentDto,
+    );
   }
 
   @Delete('comments/:commentId')

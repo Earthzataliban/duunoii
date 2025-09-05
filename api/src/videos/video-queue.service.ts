@@ -72,7 +72,7 @@ export class VideoQueueService {
       this.logger.log(`Video processing job completed: ${job.id}`);
     } catch (error) {
       this.logger.error(`Video processing job failed: ${job.id}`, error.stack);
-      
+
       // Broadcast error via WebSocket
       this.uploadProgressGateway.broadcastProgress(videoId, userId, {
         videoId,
@@ -82,7 +82,7 @@ export class VideoQueueService {
         overallProgress: 0,
         error: error instanceof Error ? error.message : 'Processing job failed',
       });
-      
+
       throw error;
     }
   }

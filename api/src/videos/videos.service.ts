@@ -312,7 +312,7 @@ export class VideosService {
     try {
       const thumbnailBuffer = await fs.readFile(thumbnailPath);
       return thumbnailBuffer;
-    } catch (error) {
+    } catch {
       throw new NotFoundException('Thumbnail file not found');
     }
   }
@@ -489,7 +489,9 @@ export class VideosService {
       });
 
       if (!parentComment || parentComment.videoId !== videoId) {
-        throw new BadRequestException('Parent comment not found or not from this video');
+        throw new BadRequestException(
+          'Parent comment not found or not from this video',
+        );
       }
     }
 
@@ -537,10 +539,11 @@ export class VideosService {
     }
 
     const offset = (page - 1) * limit;
-    
-    const orderBy = sortBy === 'newest' 
-      ? { createdAt: 'desc' as const }
-      : { createdAt: 'asc' as const };
+
+    const orderBy =
+      sortBy === 'newest'
+        ? { createdAt: 'desc' as const }
+        : { createdAt: 'asc' as const };
 
     const [comments, total] = await Promise.all([
       this.prisma.comment.findMany({

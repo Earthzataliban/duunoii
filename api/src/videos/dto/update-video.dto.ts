@@ -5,7 +5,7 @@ import { CreateVideoDto } from './create-video.dto';
 enum VideoPrivacy {
   PUBLIC = 'PUBLIC',
   UNLISTED = 'UNLISTED',
-  PRIVATE = 'PRIVATE'
+  PRIVATE = 'PRIVATE',
 }
 
 export class UpdateVideoDto extends PartialType(CreateVideoDto) {
