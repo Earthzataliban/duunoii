@@ -24,9 +24,20 @@ interface VideoGridProps {
   limit?: number;
   userId?: string;
   title?: string;
+  category?: string;
+  search?: string;
+  sortBy?: string;
 }
 
-export function VideoGrid({ className, limit = 12, userId, title = 'Latest Videos' }: VideoGridProps) {
+export function VideoGrid({ 
+  className, 
+  limit = 12, 
+  userId, 
+  title = 'Latest Videos', 
+  category, 
+  search, 
+  sortBy = 'newest' 
+}: VideoGridProps) {
   const [videos, setVideos] = useState<Video[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -41,9 +52,18 @@ export function VideoGrid({ className, limit = 12, userId, title = 'Latest Video
       const url = new URL(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080'}/videos`);
       url.searchParams.append('page', pageNum.toString());
       url.searchParams.append('limit', limit.toString());
+      url.searchParams.append('sortBy', sortBy);
       
       if (userId) {
         url.searchParams.append('userId', userId);
+      }
+      
+      if (category) {
+        url.searchParams.append('category', category);
+      }
+      
+      if (search) {
+        url.searchParams.append('search', search);
       }
 
       const response = await fetch(url.toString());
@@ -68,11 +88,11 @@ export function VideoGrid({ className, limit = 12, userId, title = 'Latest Video
     } finally {
       setLoading(false);
     }
-  }, [userId, limit]);
+  }, [userId, limit, category, search, sortBy]);
 
   useEffect(() => {
     loadVideos(1, true);
-  }, [userId, limit, loadVideos]);
+  }, [loadVideos]);
 
   const loadMore = () => {
     if (!loading && hasMore) {

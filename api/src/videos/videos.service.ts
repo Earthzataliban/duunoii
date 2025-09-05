@@ -3,6 +3,15 @@ import {
   NotFoundException,
   BadRequestException,
 } from '@nestjs/common';
+
+interface FindAllVideosOptions {
+  userId?: string;
+  page?: number;
+  limit?: number;
+  category?: string;
+  search?: string;
+  sortBy?: string;
+}
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateVideoDto } from './dto/create-video.dto';
 import { UpdateVideoDto } from './dto/update-video.dto';
@@ -62,6 +71,7 @@ export class VideosService {
       data: {
         title: createVideoDto.title,
         description: createVideoDto.description,
+        category: createVideoDto.category,
         filename,
         originalName: file.originalname,
         mimeType: file.mimetype,
@@ -96,12 +106,67 @@ export class VideosService {
     return video;
   }
 
-  async findAll(userId?: string, page = 1, limit = 10) {
+  async findAll(options: FindAllVideosOptions) {
+    const {
+      userId,
+      page = 1,
+      limit = 10,
+      category,
+      search,
+      sortBy = 'newest',
+    } = options;
+
     const offset = (page - 1) * limit;
+
+    // Build where clause
+    const baseConditions: any = {
+      status: 'READY', // Only show ready videos
+    };
+
+    if (userId) {
+      baseConditions.uploaderId = userId;
+    }
+
+    if (category) {
+      baseConditions.category = category;
+    }
+
+    // Build final where clause
+    let where: any = baseConditions;
+
+    if (search) {
+      where = {
+        AND: [
+          baseConditions,
+          {
+            OR: [
+              { title: { contains: search, mode: 'insensitive' } },
+              { description: { contains: search, mode: 'insensitive' } },
+            ],
+          },
+        ],
+      };
+    }
+
+    // Build orderBy clause
+    let orderBy: any;
+    switch (sortBy) {
+      case 'oldest':
+        orderBy = { createdAt: 'asc' };
+        break;
+      case 'most_viewed':
+        orderBy = { views: 'desc' };
+        break;
+      case 'least_viewed':
+        orderBy = { views: 'asc' };
+        break;
+      default: // newest
+        orderBy = { createdAt: 'desc' };
+    }
 
     const [videos, total] = await Promise.all([
       this.prisma.video.findMany({
-        where: userId ? { uploaderId: userId } : undefined,
+        where,
         include: {
           uploader: {
             select: {
@@ -118,15 +183,11 @@ export class VideosService {
             },
           },
         },
-        orderBy: {
-          createdAt: 'desc',
-        },
+        orderBy,
         skip: offset,
         take: limit,
       }),
-      this.prisma.video.count({
-        where: userId ? { uploaderId: userId } : undefined,
-      }),
+      this.prisma.video.count({ where }),
     ]);
 
     return {
@@ -137,6 +198,7 @@ export class VideosService {
         limit,
         totalPages: Math.ceil(total / limit),
       },
+      hasMore: page < Math.ceil(total / limit),
     };
   }
 

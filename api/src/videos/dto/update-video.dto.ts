@@ -8,8 +8,24 @@ enum VideoPrivacy {
   PRIVATE = 'PRIVATE',
 }
 
+enum VideoCategory {
+  Technology = 'Technology',
+  Music = 'Music',
+  Cooking = 'Cooking',
+  Fitness = 'Fitness',
+  Travel = 'Travel',
+  Business = 'Business',
+  Gaming = 'Gaming',
+  Education = 'Education',
+  Other = 'Other',
+}
+
 export class UpdateVideoDto extends PartialType(CreateVideoDto) {
   @IsEnum(VideoPrivacy)
   @IsOptional()
   privacy?: VideoPrivacy;
+
+  @IsEnum(VideoCategory)
+  @IsOptional()
+  category?: VideoCategory;
 }

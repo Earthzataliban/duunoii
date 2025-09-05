@@ -48,6 +48,7 @@ model Video {
   duration    Int?        // in seconds
   status      VideoStatus @default(PROCESSING)
   privacy     VideoPrivacy @default(PUBLIC)
+  category    VideoCategory? // Optional category
   thumbnailUrl String?
   views       Int         @default(0)
   uploaderId  String
@@ -184,6 +185,18 @@ enum VideoPrivacy {
   PUBLIC
   UNLISTED
   PRIVATE
+}
+
+enum VideoCategory {
+  Technology
+  Music
+  Cooking
+  Fitness
+  Travel
+  Business
+  Gaming
+  Education
+  Other
 }
 
 enum LikeType {

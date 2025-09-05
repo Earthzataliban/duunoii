@@ -55,10 +55,20 @@ export class VideosController {
     @Query('page') page?: string,
     @Query('limit') limit?: string,
     @Query('userId') userId?: string,
+    @Query('category') category?: string,
+    @Query('search') search?: string,
+    @Query('sortBy') sortBy?: string,
   ) {
     const parsedPage = page ? parseInt(page) || 1 : 1;
     const parsedLimit = limit ? parseInt(limit) || 10 : 10;
-    return this.videosService.findAll(userId, parsedPage, parsedLimit);
+    return this.videosService.findAll({
+      userId,
+      page: parsedPage,
+      limit: parsedLimit,
+      category,
+      search,
+      sortBy: sortBy || 'newest',
+    });
   }
 
   @Get('my-videos')
@@ -70,7 +80,12 @@ export class VideosController {
   ) {
     const parsedPage = page ? parseInt(page) || 1 : 1;
     const parsedLimit = limit ? parseInt(limit) || 10 : 10;
-    return this.videosService.findAll(req.user.userId, parsedPage, parsedLimit);
+    return this.videosService.findAll({
+      userId: req.user.userId,
+      page: parsedPage,
+      limit: parsedLimit,
+      sortBy: 'newest',
+    });
   }
 
   @Get(':id')

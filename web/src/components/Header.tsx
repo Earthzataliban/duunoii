@@ -1,7 +1,8 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { AuthModal } from '@/components/auth/AuthModal';
@@ -20,6 +21,14 @@ export function Header({ onMenuClick, isDarkMode = true, onThemeToggle }: Header
   const [authModalOpen, setAuthModalOpen] = useState(false);
   const [authMode, setAuthMode] = useState<'login' | 'register'>('login');
   const [searchQuery, setSearchQuery] = useState('');
+  const router = useRouter();
+  const searchParams = useSearchParams();
+
+  // Initialize search query from URL params
+  useEffect(() => {
+    const urlSearchQuery = searchParams.get('search') || '';
+    setSearchQuery(urlSearchQuery);
+  }, [searchParams]);
 
   const openLoginModal = () => {
     setAuthMode('login');
@@ -29,6 +38,15 @@ export function Header({ onMenuClick, isDarkMode = true, onThemeToggle }: Header
   const openRegisterModal = () => {
     setAuthMode('register');
     setAuthModalOpen(true);
+  };
+
+  const handleSearch = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (searchQuery.trim()) {
+      router.push(`/?search=${encodeURIComponent(searchQuery.trim())}`);
+    } else {
+      router.push('/');
+    }
   };
 
   return (
@@ -55,7 +73,7 @@ export function Header({ onMenuClick, isDarkMode = true, onThemeToggle }: Header
 
           {/* Search Bar */}
           <div className="flex-1 max-w-2xl mx-4">
-            <div className="relative">
+            <form onSubmit={handleSearch} className="relative">
               <input
                 type="text"
                 value={searchQuery}
@@ -64,13 +82,14 @@ export function Header({ onMenuClick, isDarkMode = true, onThemeToggle }: Header
                 className="w-full px-4 py-2 pr-12 rounded-full border border-input bg-background text-foreground placeholder:text-muted-foreground focus:border-ring transition-colors"
               />
               <Button
+                type="submit"
                 variant="ghost"
                 size="icon"
                 className="absolute right-1 top-1/2 transform -translate-y-1/2 h-8 w-8"
               >
                 <Search className="h-4 w-4" />
               </Button>
-            </div>
+            </form>
           </div>
 
           {/* Right Section */}
