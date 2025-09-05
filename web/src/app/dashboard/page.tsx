@@ -6,6 +6,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { AuthService } from '@/lib/auth';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { VideoEditModal } from '@/components/VideoEditModal';
 import { 
   Video, 
   Eye, 
@@ -16,10 +17,15 @@ import {
   Plus, 
   Search,
   Play,
-  Clock
+  Clock,
+  CheckSquare,
+  Square,
+  Trash
 } from 'lucide-react';
 import Link from 'next/link';
 import { formatDistanceToNow } from 'date-fns';
+
+type VideoPrivacy = 'PUBLIC' | 'UNLISTED' | 'PRIVATE';
 
 interface VideoData {
   id: string;
@@ -28,6 +34,7 @@ interface VideoData {
   views: number;
   createdAt: string;
   status: 'PROCESSING' | 'READY' | 'FAILED';
+  privacy?: VideoPrivacy;
   _count: {
     likes: number;
     comments: number;
@@ -55,6 +62,11 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedStatus, setSelectedStatus] = useState<string>('all');
+  const [selectedPrivacy, setSelectedPrivacy] = useState<string>('all');
+  const [editingVideo, setEditingVideo] = useState<VideoData | null>(null);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [selectedVideos, setSelectedVideos] = useState<Set<string>>(new Set());
+  const [bulkDeleteLoading, setBulkDeleteLoading] = useState(false);
 
   useEffect(() => {
     if (!isAuthenticated) {
@@ -103,6 +115,91 @@ export default function DashboardPage() {
       setLoading(false);
     }
   }, [router]);
+
+  const handleEditVideo = (video: VideoData) => {
+    setEditingVideo(video);
+    setIsEditModalOpen(true);
+  };
+
+  const handleCloseEditModal = () => {
+    setIsEditModalOpen(false);
+    setEditingVideo(null);
+  };
+
+  const handleVideoUpdated = (updatedVideo: VideoData) => {
+    // Update the video in the local state
+    setVideos(prev => prev.map(video => 
+      video.id === updatedVideo.id 
+        ? { 
+            ...video, 
+            title: updatedVideo.title, 
+            description: updatedVideo.description,
+            privacy: updatedVideo.privacy 
+          }
+        : video
+    ));
+  };
+
+  const handleSelectVideo = (videoId: string) => {
+    setSelectedVideos(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(videoId)) {
+        newSet.delete(videoId);
+      } else {
+        newSet.add(videoId);
+      }
+      return newSet;
+    });
+  };
+
+  const handleSelectAll = () => {
+    if (selectedVideos.size === filteredVideos.length) {
+      // Unselect all
+      setSelectedVideos(new Set());
+    } else {
+      // Select all filtered videos
+      setSelectedVideos(new Set(filteredVideos.map(v => v.id)));
+    }
+  };
+
+  const handleBulkDelete = async () => {
+    if (selectedVideos.size === 0) return;
+    
+    const confirmed = confirm(`Are you sure you want to delete ${selectedVideos.size} video(s)? This action cannot be undone.`);
+    if (!confirmed) return;
+
+    setBulkDeleteLoading(true);
+    try {
+      const token = AuthService.getToken();
+      const deletePromises = Array.from(selectedVideos).map(videoId =>
+        fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080'}/videos/${videoId}`, {
+          method: 'DELETE',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+          },
+        })
+      );
+
+      const results = await Promise.allSettled(deletePromises);
+      const failedDeletes = results.filter(result => result.status === 'rejected').length;
+      
+      if (failedDeletes > 0) {
+        alert(`${failedDeletes} video(s) failed to delete. Please try again.`);
+      }
+
+      // Remove successfully deleted videos from local state
+      setVideos(prev => prev.filter(video => !selectedVideos.has(video.id)));
+      setSelectedVideos(new Set());
+      
+      // Recalculate stats
+      loadDashboardData();
+    } catch (error) {
+      console.error('Bulk delete failed:', error);
+      alert('Failed to delete videos. Please try again.');
+    } finally {
+      setBulkDeleteLoading(false);
+    }
+  };
 
   const handleDeleteVideo = async (videoId: string) => {
     if (!confirm('Are you sure you want to delete this video? This action cannot be undone.')) {
@@ -154,10 +251,24 @@ export default function DashboardPage() {
     }
   };
 
+  const getPrivacyBadge = (privacy?: VideoPrivacy) => {
+    switch (privacy) {
+      case 'PUBLIC':
+        return <span className="px-2 py-1 text-xs bg-blue-500/10 text-blue-500 rounded-full">Public</span>;
+      case 'UNLISTED':
+        return <span className="px-2 py-1 text-xs bg-orange-500/10 text-orange-500 rounded-full">Unlisted</span>;
+      case 'PRIVATE':
+        return <span className="px-2 py-1 text-xs bg-purple-500/10 text-purple-500 rounded-full">Private</span>;
+      default:
+        return <span className="px-2 py-1 text-xs bg-blue-500/10 text-blue-500 rounded-full">Public</span>;
+    }
+  };
+
   const filteredVideos = videos.filter(video => {
     const matchesSearch = video.title.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesStatus = selectedStatus === 'all' || video.status.toLowerCase() === selectedStatus;
-    return matchesSearch && matchesStatus;
+    const matchesPrivacy = selectedPrivacy === 'all' || (video.privacy || 'PUBLIC') === selectedPrivacy;
+    return matchesSearch && matchesStatus && matchesPrivacy;
   });
 
   if (!isAuthenticated) {
@@ -249,12 +360,81 @@ export default function DashboardPage() {
             <option value="processing">Processing</option>
             <option value="failed">Failed</option>
           </select>
+
+          <select
+            value={selectedPrivacy}
+            onChange={(e) => setSelectedPrivacy(e.target.value)}
+            className="px-3 py-2 bg-background border border-border rounded-md text-foreground"
+          >
+            <option value="all">All Privacy</option>
+            <option value="PUBLIC">Public</option>
+            <option value="UNLISTED">Unlisted</option>
+            <option value="PRIVATE">Private</option>
+          </select>
         </div>
+
+        {/* Bulk Actions */}
+        {selectedVideos.size > 0 && (
+          <div className="bg-primary/10 border border-primary/20 rounded-lg p-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <CheckSquare className="h-4 w-4 text-primary" />
+                <span className="text-sm font-medium text-foreground">
+                  {selectedVideos.size} video(s) selected
+                </span>
+              </div>
+              <div className="flex items-center gap-2">
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  onClick={() => setSelectedVideos(new Set())}
+                >
+                  Clear Selection
+                </Button>
+                <Button 
+                  variant="destructive" 
+                  size="sm"
+                  onClick={handleBulkDelete}
+                  disabled={bulkDeleteLoading}
+                >
+                  {bulkDeleteLoading ? (
+                    <>
+                      <div className="h-4 w-4 mr-2 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                      Deleting...
+                    </>
+                  ) : (
+                    <>
+                      <Trash className="h-4 w-4 mr-2" />
+                      Delete Selected
+                    </>
+                  )}
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Videos List */}
         <div className="bg-card rounded-lg border">
           <div className="p-6 border-b">
-            <h2 className="text-xl font-semibold text-foreground">My Videos ({filteredVideos.length})</h2>
+            <div className="flex items-center justify-between">
+              <h2 className="text-xl font-semibold text-foreground">My Videos ({filteredVideos.length})</h2>
+              {filteredVideos.length > 0 && (
+                <Button 
+                  variant="ghost" 
+                  size="sm"
+                  onClick={handleSelectAll}
+                  className="flex items-center gap-2"
+                >
+                  {selectedVideos.size === filteredVideos.length ? (
+                    <CheckSquare className="h-4 w-4" />
+                  ) : (
+                    <Square className="h-4 w-4" />
+                  )}
+                  Select All
+                </Button>
+              )}
+            </div>
           </div>
 
           {loading ? (
@@ -277,12 +457,12 @@ export default function DashboardPage() {
               <Video className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
               <h3 className="text-lg font-semibold text-foreground mb-2">No videos found</h3>
               <p className="text-muted-foreground mb-4">
-                {searchTerm || selectedStatus !== 'all' 
+                {searchTerm || selectedStatus !== 'all' || selectedPrivacy !== 'all'
                   ? 'Try adjusting your search or filter criteria.'
                   : 'Start by uploading your first video.'
                 }
               </p>
-              {!searchTerm && selectedStatus === 'all' && (
+              {!searchTerm && selectedStatus === 'all' && selectedPrivacy === 'all' && (
                 <Link href="/upload">
                   <Button>
                     <Plus className="h-4 w-4 mr-2" />
@@ -295,6 +475,20 @@ export default function DashboardPage() {
             <div className="divide-y">
               {filteredVideos.map((video) => (
                 <div key={video.id} className="p-6 flex gap-4 hover:bg-muted/5 transition-colors">
+                  {/* Checkbox */}
+                  <div className="flex items-start pt-2">
+                    <button
+                      onClick={() => handleSelectVideo(video.id)}
+                      className="text-muted-foreground hover:text-foreground"
+                    >
+                      {selectedVideos.has(video.id) ? (
+                        <CheckSquare className="h-5 w-5" />
+                      ) : (
+                        <Square className="h-5 w-5" />
+                      )}
+                    </button>
+                  </div>
+                  
                   {/* Thumbnail */}
                   <div className="relative w-32 h-20 bg-muted rounded overflow-hidden flex-shrink-0">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -322,7 +516,10 @@ export default function DashboardPage() {
                           video.title
                         )}
                       </h3>
-                      {getStatusBadge(video.status)}
+                      <div className="flex items-center gap-2">
+                        {getStatusBadge(video.status)}
+                        {getPrivacyBadge(video.privacy)}
+                      </div>
                     </div>
                     
                     <p className="text-sm text-muted-foreground line-clamp-2 mb-3">
@@ -351,7 +548,12 @@ export default function DashboardPage() {
 
                   {/* Actions */}
                   <div className="flex items-center gap-2">
-                    <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground">
+                    <Button 
+                      variant="ghost" 
+                      size="sm" 
+                      className="text-muted-foreground hover:text-foreground"
+                      onClick={() => handleEditVideo(video)}
+                    >
                       <Edit className="h-4 w-4" />
                     </Button>
                     <Button 
@@ -369,6 +571,14 @@ export default function DashboardPage() {
           )}
         </div>
       </div>
+      
+      {/* Edit Modal */}
+      <VideoEditModal
+        video={editingVideo}
+        isOpen={isEditModalOpen}
+        onClose={handleCloseEditModal}
+        onVideoUpdated={handleVideoUpdated}
+      />
     </div>
   );
 }

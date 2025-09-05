@@ -47,6 +47,7 @@ model Video {
   size        Int
   duration    Int?        // in seconds
   status      VideoStatus @default(PROCESSING)
+  privacy     VideoPrivacy @default(PUBLIC)
   thumbnailUrl String?
   views       Int         @default(0)
   uploaderId  String
@@ -177,6 +178,12 @@ enum VideoStatus {
   PROCESSING
   READY
   FAILED
+}
+
+enum VideoPrivacy {
+  PUBLIC
+  UNLISTED
+  PRIVATE
 }
 
 enum LikeType {
