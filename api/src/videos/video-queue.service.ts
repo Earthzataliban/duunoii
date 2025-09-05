@@ -1,7 +1,8 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, Inject, forwardRef } from '@nestjs/common';
 import { InjectQueue, Process, Processor } from '@nestjs/bull';
 import type { Job, Queue } from 'bull';
 import { VideoProcessingService } from './video-processing.service';
+import { UploadProgressGateway } from './upload-progress.gateway';
 
 export interface VideoProcessingJob {
   videoId: string;
@@ -16,6 +17,8 @@ export class VideoQueueService {
   constructor(
     @InjectQueue('video-processing') private videoQueue: Queue,
     private videoProcessingService: VideoProcessingService,
+    @Inject(forwardRef(() => UploadProgressGateway))
+    private uploadProgressGateway: UploadProgressGateway,
   ) {}
 
   async addVideoProcessingJob(
@@ -44,13 +47,21 @@ export class VideoQueueService {
 
   @Process('process-video')
   async processVideo(job: Job<VideoProcessingJob>): Promise<void> {
-    const { videoId } = job.data;
+    const { videoId, userId } = job.data;
 
     this.logger.log(`Processing video job: ${job.id} for video: ${videoId}`);
 
     try {
-      // Update job progress
-      await job.progress(10);
+      // Initial progress update
+      await job.progress(5);
+      this.uploadProgressGateway.broadcastProgress(videoId, userId, {
+        videoId,
+        stage: 'processing',
+        uploadProgress: 100,
+        processingProgress: 5,
+        overallProgress: 35,
+        currentTask: 'Starting video processing job...',
+      });
 
       // Process the video
       await this.videoProcessingService.processVideo(videoId);
@@ -61,6 +72,17 @@ export class VideoQueueService {
       this.logger.log(`Video processing job completed: ${job.id}`);
     } catch (error) {
       this.logger.error(`Video processing job failed: ${job.id}`, error.stack);
+      
+      // Broadcast error via WebSocket
+      this.uploadProgressGateway.broadcastProgress(videoId, userId, {
+        videoId,
+        stage: 'error',
+        uploadProgress: 0,
+        processingProgress: 0,
+        overallProgress: 0,
+        error: error instanceof Error ? error.message : 'Processing job failed',
+      });
+      
       throw error;
     }
   }

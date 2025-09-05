@@ -1,7 +1,8 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, Inject, forwardRef } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { VideoStatus } from '@prisma/client';
 import { HLSService } from './hls.service';
+import { UploadProgressGateway } from './upload-progress.gateway';
 import ffmpeg from 'fluent-ffmpeg';
 import * as path from 'path';
 import * as fs from 'fs/promises';
@@ -42,6 +43,8 @@ export class VideoProcessingService {
   constructor(
     private prisma: PrismaService,
     private hlsService: HLSService,
+    @Inject(forwardRef(() => UploadProgressGateway))
+    private uploadProgressGateway: UploadProgressGateway,
   ) {}
 
   async processVideo(videoId: string): Promise<void> {
@@ -57,6 +60,16 @@ export class VideoProcessingService {
       if (!video) {
         throw new Error(`Video with ID ${videoId} not found`);
       }
+
+      // Broadcast initial processing progress
+      this.uploadProgressGateway.broadcastProgress(videoId, video.uploaderId, {
+        videoId,
+        stage: 'validating',
+        uploadProgress: 100,
+        processingProgress: 0,
+        overallProgress: 35,
+        currentTask: 'Validating and analyzing video file...',
+      });
 
       // Use absolute path to ensure we find the uploaded file
       const inputPath = path.resolve(
@@ -84,13 +97,44 @@ export class VideoProcessingService {
       );
       await fs.mkdir(outputDir, { recursive: true });
 
+      // Broadcast metadata extraction progress
+      this.uploadProgressGateway.broadcastProgress(videoId, video.uploaderId, {
+        videoId,
+        stage: 'processing',
+        uploadProgress: 100,
+        processingProgress: 10,
+        overallProgress: 40,
+        currentTask: 'Extracting video metadata...',
+      });
+
       // Extract video metadata and generate thumbnail
       const metadata = await this.getVideoMetadata(inputPath);
+      
+      // Broadcast thumbnail generation progress
+      this.uploadProgressGateway.broadcastProgress(videoId, video.uploaderId, {
+        videoId,
+        stage: 'processing',
+        uploadProgress: 100,
+        processingProgress: 25,
+        overallProgress: 50,
+        currentTask: 'Generating video thumbnail...',
+      });
+      
       const thumbnailPath = await this.generateThumbnail(
         inputPath,
         outputDir,
         videoId,
       );
+
+      // Broadcast transcoding progress
+      this.uploadProgressGateway.broadcastProgress(videoId, video.uploaderId, {
+        videoId,
+        stage: 'encoding',
+        uploadProgress: 100,
+        processingProgress: 40,
+        overallProgress: 60,
+        currentTask: 'Transcoding video to multiple resolutions...',
+      });
 
       // Process video for multiple resolutions
       const processedFiles = await this.transcodeVideo(
@@ -108,8 +152,28 @@ export class VideoProcessingService {
         processedFiles,
       );
 
+      // Broadcast HLS generation progress
+      this.uploadProgressGateway.broadcastProgress(videoId, video.uploaderId, {
+        videoId,
+        stage: 'finalizing',
+        uploadProgress: 100,
+        processingProgress: 90,
+        overallProgress: 90,
+        currentTask: 'Generating streaming files...',
+      });
+
       // Generate HLS streams for adaptive streaming
       await this.hlsService.generateHLSStreams(videoId);
+
+      // Broadcast completion
+      this.uploadProgressGateway.broadcastProgress(videoId, video.uploaderId, {
+        videoId,
+        stage: 'completed',
+        uploadProgress: 100,
+        processingProgress: 100,
+        overallProgress: 100,
+        currentTask: 'Video processing completed successfully!',
+      });
 
       this.logger.log(`Video processing completed for video ID: ${videoId}`);
     } catch (error) {
@@ -117,6 +181,24 @@ export class VideoProcessingService {
         `Video processing failed for video ID: ${videoId}`,
         error,
       );
+
+      // Get video info for error broadcasting
+      const video = await this.prisma.video.findUnique({
+        where: { id: videoId },
+        select: { uploaderId: true }
+      });
+
+      // Broadcast error
+      if (video) {
+        this.uploadProgressGateway.broadcastProgress(videoId, video.uploaderId, {
+          videoId,
+          stage: 'error',
+          uploadProgress: 0,
+          processingProgress: 0,
+          overallProgress: 0,
+          error: error instanceof Error ? error.message : 'Video processing failed',
+        });
+      }
 
       // Update video status to FAILED
       await this.prisma.video.update({

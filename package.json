@@ -39,10 +39,20 @@
     "web",
     "shared"
   ],
-  "keywords": ["video", "platform", "nestjs", "nextjs", "youtube", "streaming"],
+  "keywords": [
+    "video",
+    "platform",
+    "nestjs",
+    "nextjs",
+    "youtube",
+    "streaming"
+  ],
   "author": "Your Name",
   "license": "MIT",
   "devDependencies": {
     "concurrently": "^8.2.2"
+  },
+  "dependencies": {
+    "socket.io-client": "^4.7.5"
   }
 }

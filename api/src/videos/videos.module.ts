@@ -5,6 +5,7 @@ import { VideosController } from './videos.controller';
 import { VideoProcessingService } from './video-processing.service';
 import { VideoQueueService } from './video-queue.service';
 import { HLSService } from './hls.service';
+import { UploadProgressGateway } from './upload-progress.gateway';
 
 @Module({
   imports: [
@@ -17,6 +18,7 @@ import { HLSService } from './hls.service';
     VideoProcessingService,
     VideoQueueService,
     HLSService,
+    UploadProgressGateway,
   ],
   controllers: [VideosController],
   exports: [
@@ -24,6 +26,7 @@ import { HLSService } from './hls.service';
     VideoProcessingService,
     VideoQueueService,
     HLSService,
+    UploadProgressGateway,
   ],
 })
 export class VideosModule {}

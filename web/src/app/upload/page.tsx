@@ -1,28 +1,22 @@
 'use client';
 
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
-import { AuthService } from '@/lib/auth';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
+import { UploadProgress, UploadProgressData } from '@/components/UploadProgress';
+import { uploadVideo } from '@/lib/upload-service';
+import { useUploadProgress } from '@/lib/websocket';
 import { 
   Upload, 
   Video, 
   X, 
-  AlertCircle,
-  CheckCircle,
-  Loader2 
+  AlertCircle
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-
-interface UploadProgress {
-  progress: number;
-  status: 'idle' | 'uploading' | 'processing' | 'completed' | 'error';
-  message?: string;
-}
 
 export default function UploadPage() {
   const { user, isAuthenticated } = useAuth();
@@ -32,10 +26,12 @@ export default function UploadPage() {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [dragActive, setDragActive] = useState(false);
   const [videoPreviewUrl, setVideoPreviewUrl] = useState<string | null>(null);
-  const [uploadProgress, setUploadProgress] = useState<UploadProgress>({
-    progress: 0,
-    status: 'idle'
+  const [uploadProgress, setUploadProgress] = useState<UploadProgressData>({
+    stage: 'idle',
+    overallProgress: 0
   });
+  const [uploading, setUploading] = useState(false);
+  const [uploadId, setUploadId] = useState<string | null>(null);
 
   const [videoData, setVideoData] = useState({
     title: '',
@@ -43,7 +39,21 @@ export default function UploadPage() {
     thumbnail: null as File | null,
   });
 
-  // Show loading state while checking authentication
+  // Always call hooks before any early returns
+  const { subscribeToUpload } = useUploadProgress();
+
+  // Set up WebSocket subscription for real-time updates
+  useEffect(() => {
+    if (!uploadId) return;
+
+    const unsubscribe = subscribeToUpload(uploadId, (progress) => {
+      setUploadProgress(progress);
+    });
+
+    return unsubscribe;
+  }, [uploadId, subscribeToUpload]);
+
+  // Show loading state while checking authentication - moved after all hooks
   if (!isAuthenticated && !user) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
@@ -120,138 +130,51 @@ export default function UploadPage() {
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
   };
 
-  // Utility function for future use
-  // const formatDuration = (seconds: number): string => {
-  //   const hours = Math.floor(seconds / 3600);
-  //   const minutes = Math.floor((seconds % 3600) / 60);
-  //   const secs = Math.floor(seconds % 60);
-  //   
-  //   if (hours > 0) {
-  //     return `${hours}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
-  //   }
-  //   return `${minutes}:${secs.toString().padStart(2, '0')}`;
-  // };
-
-  const uploadVideo = async () => {
-    console.log('Upload button clicked!');
-    console.log('Selected file:', selectedFile);
-    console.log('Title:', videoData.title);
-    console.log('User:', user);
-    
+  const handleUpload = async () => {
     if (!selectedFile || !videoData.title.trim()) {
-      console.log('Missing file or title');
       return;
     }
 
-    setUploadProgress({ progress: 0, status: 'uploading', message: 'Uploading video...' });
-
-    const formData = new FormData();
-    formData.append('video', selectedFile);
-    formData.append('title', videoData.title);
-    formData.append('description', videoData.description);
-
+    setUploading(true);
+    
     try {
-      const token = AuthService.getToken();
-      console.log('Token from AuthService:', token);
-      
-      if (!token) {
-        throw new Error('No authentication token found');
-      }
-
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080'}/videos/upload`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
+      const result = await uploadVideo(
+        {
+          file: selectedFile,
+          title: videoData.title,
+          description: videoData.description,
         },
-        body: formData,
-      });
+        {
+          onProgress: (progress) => {
+            setUploadProgress(progress);
+            setUploadId(progress.videoId);
+          },
+          onComplete: (videoId) => {
+            console.log('Upload completed:', videoId);
+            // Redirect to video page after 2 seconds
+            setTimeout(() => {
+              router.push(`/watch/${videoId}`);
+            }, 2000);
+          },
+          onError: (error) => {
+            console.error('Upload error:', error);
+            setUploading(false);
+          }
+        }
+      );
 
-      if (!response.ok) {
-        throw new Error('Upload failed');
-      }
-
-      const result = await response.json();
-      
-      setUploadProgress({ 
-        progress: 100, 
-        status: 'processing', 
-        message: 'Processing video...' 
-      });
-
-      // Poll for processing status
-      if (result.data && result.data.id) {
-        pollProcessingStatus(result.data.id);
-      } else {
-        console.error('No video ID in response:', result);
-        setUploadProgress({ 
-          progress: 100, 
-          status: 'completed', 
-          message: 'Upload completed but processing status unavailable' 
-        });
-      }
-
+      console.log('Upload initiated:', result);
     } catch (error) {
-      console.error('Upload error:', error);
-      setUploadProgress({ 
-        progress: 0, 
-        status: 'error', 
-        message: 'Upload failed. Please try again.' 
+      console.error('Upload failed:', error);
+      setUploadProgress({
+        stage: 'error',
+        overallProgress: 0,
+        error: error instanceof Error ? error.message : 'Upload failed. Please try again.'
       });
+      setUploading(false);
     }
   };
 
-  const pollProcessingStatus = async (videoId: string) => {
-    const maxAttempts = 60; // 5 minutes max
-    let attempts = 0;
-
-    const poll = setInterval(async () => {
-      try {
-        const response = await fetch(
-          `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080'}/videos/${videoId}/processing-status`,
-          {
-            headers: {
-              'Authorization': `Bearer ${localStorage.getItem('token')}`,
-            },
-          }
-        );
-
-        const result = await response.json();
-        
-        if (result.data && result.data.status === 'completed') {
-          setUploadProgress({ 
-            progress: 100, 
-            status: 'completed', 
-            message: 'Video uploaded successfully!' 
-          });
-          clearInterval(poll);
-          
-          // Redirect to video page after 2 seconds
-          setTimeout(() => {
-            router.push(`/watch/${videoId}`);
-          }, 2000);
-        } else if (result.data && result.data.status === 'failed') {
-          setUploadProgress({ 
-            progress: 0, 
-            status: 'error', 
-            message: 'Video processing failed.' 
-          });
-          clearInterval(poll);
-        }
-
-        attempts++;
-        if (attempts >= maxAttempts) {
-          clearInterval(poll);
-          setUploadProgress({ 
-            progress: 100, 
-            status: 'error', 
-            message: 'Processing timeout. Video may still be processing.' 
-          });
-        }
-      } catch (error) {
-        console.error('Polling error:', error);
-      }
-    }, 5000); // Poll every 5 seconds
-  };
 
   const removeFile = () => {
     setSelectedFile(null);
@@ -263,7 +186,12 @@ export default function UploadPage() {
     }
     
     setVideoData({ title: '', description: '', thumbnail: null });
-    setUploadProgress({ progress: 0, status: 'idle' });
+    setUploadProgress({
+      stage: 'idle',
+      overallProgress: 0
+    });
+    setUploading(false);
+    setUploadId(null);
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
     }
@@ -351,46 +279,12 @@ export default function UploadPage() {
                 </div>
 
                 {/* Upload Progress */}
-                {uploadProgress.status !== 'idle' && (
-                  <div className="mb-4">
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="text-sm text-muted-foreground">{uploadProgress.message}</span>
-                      <span className="text-sm text-muted-foreground">{uploadProgress.progress}%</span>
-                    </div>
-                    <div className="w-full bg-secondary rounded-full h-2">
-                      <div 
-                        className={cn(
-                          "h-2 rounded-full transition-all duration-300",
-                          uploadProgress.status === 'error' ? 'bg-destructive' :
-                          uploadProgress.status === 'completed' ? 'bg-green-500' :
-                          'bg-primary'
-                        )}
-                        style={{ width: `${uploadProgress.progress}%` }}
-                      />
-                    </div>
-                    <div className="flex items-center mt-2">
-                      {uploadProgress.status === 'uploading' && (
-                        <Loader2 className="h-4 w-4 text-primary animate-spin mr-2" />
-                      )}
-                      {uploadProgress.status === 'processing' && (
-                        <Loader2 className="h-4 w-4 text-yellow-500 animate-spin mr-2" />
-                      )}
-                      {uploadProgress.status === 'completed' && (
-                        <CheckCircle className="h-4 w-4 text-green-500 mr-2" />
-                      )}
-                      {uploadProgress.status === 'error' && (
-                        <AlertCircle className="h-4 w-4 text-destructive mr-2" />
-                      )}
-                      <span className={cn(
-                        "text-sm",
-                        uploadProgress.status === 'error' ? 'text-destructive' :
-                        uploadProgress.status === 'completed' ? 'text-green-500' :
-                        'text-muted-foreground'
-                      )}>
-                        {uploadProgress.message}
-                      </span>
-                    </div>
-                  </div>
+                {uploadProgress.stage !== 'idle' && (
+                  <UploadProgress 
+                    data={uploadProgress} 
+                    fileName={selectedFile.name}
+                    className="mb-4"
+                  />
                 )}
               </div>
             )}
@@ -440,18 +334,19 @@ export default function UploadPage() {
 
             {/* Upload Button */}
             <Button
-              onClick={(e) => {
-                console.log('Button clicked event:', e);
-                uploadVideo();
-              }}
-              disabled={!selectedFile || !videoData.title.trim() || uploadProgress.status === 'uploading' || uploadProgress.status === 'processing'}
+              onClick={handleUpload}
+              disabled={!selectedFile || !videoData.title.trim() || uploading || uploadProgress.stage === 'completed'}
               className="w-full bg-primary hover:bg-primary/90 text-primary-foreground"
               size="lg"
             >
-              {uploadProgress.status === 'uploading' || uploadProgress.status === 'processing' ? (
+              {uploading ? (
                 <>
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  {uploadProgress.status === 'uploading' ? 'Uploading...' : 'Processing...'}
+                  <Upload className="h-4 w-4 mr-2" />
+                  {uploadProgress.currentTask || 'Uploading...'}
+                </>
+              ) : uploadProgress.stage === 'completed' ? (
+                <>
+                  Upload Completed!
                 </>
               ) : (
                 <>
@@ -461,7 +356,7 @@ export default function UploadPage() {
               )}
             </Button>
 
-            {selectedFile && uploadProgress.status === 'idle' && (
+            {selectedFile && uploadProgress.stage === 'idle' && !uploading && (
               <div className="bg-primary/10 border border-primary/20 rounded-lg p-4">
                 <div className="flex items-start space-x-2">
                   <AlertCircle className="h-5 w-5 text-primary flex-shrink-0 mt-0.5" />
