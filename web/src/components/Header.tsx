@@ -132,19 +132,21 @@ export function Header({ onMenuClick, isDarkMode = true, onThemeToggle }: Header
                       className="rounded-md shadow-lg border border-border bg-popover p-2 w-48 z-50"
                       sideOffset={5}
                     >
-                      <DropdownMenu.Item className="flex items-center space-x-2 px-3 py-2 text-sm rounded cursor-pointer text-foreground hover:bg-accent">
-                        <User className="h-4 w-4" />
-                        <span>Profile</span>
+                      <DropdownMenu.Item asChild>
+                        <Link href={`/profile/${user.username}`} className="flex items-center space-x-2 px-3 py-2 text-sm rounded cursor-pointer text-foreground hover:bg-accent">
+                          <User className="h-4 w-4" />
+                          <span>Profile</span>
+                        </Link>
                       </DropdownMenu.Item>
 
-                      <DropdownMenu.Item className={cn(
-                        'flex items-center space-x-2 px-3 py-2 text-sm rounded cursor-pointer',
-                        isDarkMode
-                          ? 'text-white hover:bg-gray-700'
-                          : 'text-gray-900 hover:bg-gray-100'
-                      )}>
-                        <Video className="h-4 w-4" />
-                        <span>My Videos</span>
+                      <DropdownMenu.Item asChild>
+                        <Link href="/dashboard" className={cn(
+                          'flex items-center space-x-2 px-3 py-2 text-sm rounded cursor-pointer',
+                          'text-foreground hover:bg-accent'
+                        )}>
+                          <Video className="h-4 w-4" />
+                          <span>My Videos</span>
+                        </Link>
                       </DropdownMenu.Item>
 
                       <DropdownMenu.Separator className="h-px my-1 bg-border" />

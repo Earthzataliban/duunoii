@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { ThumbsUp, ThumbsDown, Share2, MoreHorizontal, Eye, Calendar } from 'lucide-react';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
+import Link from 'next/link';
 
 interface Video {
   id: string;
@@ -323,15 +324,19 @@ export function VideoMetadata({ video }: VideoMetadataProps) {
       {/* Channel Info */}
       <div className="flex items-start justify-between gap-4 p-4 bg-secondary/30 rounded-lg">
         <div className="flex items-start gap-3">
-          <Avatar className="w-10 h-10">
-            <AvatarImage src={`https://api.dicebear.com/7.x/initials/svg?seed=${video.uploader.username}`} />
-            <AvatarFallback>{getUserInitials(video.uploader.username)}</AvatarFallback>
-          </Avatar>
+          <Link href={`/profile/${video.uploader.username}`} className="hover:opacity-80 transition-opacity">
+            <Avatar className="w-10 h-10">
+              <AvatarImage src={`https://api.dicebear.com/7.x/initials/svg?seed=${video.uploader.username}`} />
+              <AvatarFallback>{getUserInitials(video.uploader.username)}</AvatarFallback>
+            </Avatar>
+          </Link>
           
           <div className="flex-1">
-            <h3 className="font-semibold text-foreground">
-              {video.uploader.username}
-            </h3>
+            <Link href={`/profile/${video.uploader.username}`} className="hover:opacity-80 transition-opacity">
+              <h3 className="font-semibold text-foreground">
+                {video.uploader.username}
+              </h3>
+            </Link>
             <p className="text-sm text-muted-foreground">
               {subscriberCount > 0 ? `${subscriberCount} subscribers` : 'No subscribers yet'} • Published {formatDate(video.createdAt)}
             </p>

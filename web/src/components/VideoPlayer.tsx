@@ -1,6 +1,6 @@
 'use client';
 
-import { useLayoutEffect, useRef, useState } from 'react';
+import { useLayoutEffect, useRef, useState, useEffect, useCallback } from 'react';
 import Hls from 'hls.js';
 import { Play, Pause, Volume2, VolumeX, Settings, Maximize } from 'lucide-react';
 
@@ -24,6 +24,107 @@ export function VideoPlayer({ videoId, onPlay }: VideoPlayerProps) {
   const [showControls] = useState(true);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  
+  // Watch progress tracking
+  const [watchProgress, setWatchProgress] = useState(0);
+  const [showResumeOption, setShowResumeOption] = useState(false);
+  const lastSavedProgressRef = useRef(0);
+  const progressSaveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Helper functions for watch progress
+  const getAuthToken = () => {
+    if (typeof window === 'undefined') return null;
+    return localStorage.getItem('token');
+  };
+
+  const saveWatchProgress = async (progress: number, videoDuration: number) => {
+    const token = getAuthToken();
+    if (!token || progress < 1 || videoDuration < 5) return; // Save from 1 second onwards
+    
+    try {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080'}/videos/${videoId}/watch-progress`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ 
+          progress: Math.floor(progress),
+          duration: Math.floor(videoDuration)
+        })
+      });
+      
+      if (response.ok) {
+        lastSavedProgressRef.current = progress;
+      }
+    } catch (error) {
+      console.error('Failed to save watch progress:', error);
+    }
+  };
+
+  const loadWatchProgress = useCallback(async () => {
+    const token = getAuthToken();
+    if (!token) return null;
+    
+    try {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080'}/videos/${videoId}/watch-progress`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        return data.progress || 0;
+      }
+    } catch (error) {
+      console.error('Failed to load watch progress:', error);
+    }
+    return null;
+  }, [videoId]);
+
+  const handleResumePlayback = () => {
+    const video = videoRef.current;
+    if (!video || watchProgress <= 0) return;
+    
+    video.currentTime = watchProgress;
+    setCurrentTime(watchProgress);
+    setShowResumeOption(false);
+    
+    // Start playing if not already playing
+    if (!isPlaying) {
+      video.play();
+    }
+  };
+
+  const throttledSaveProgress = (progress: number, videoDuration: number) => {
+    // Clear existing timeout
+    if (progressSaveTimeoutRef.current) {
+      clearTimeout(progressSaveTimeoutRef.current);
+    }
+    
+    // Save every 10 seconds or if significant progress change (>5 seconds)
+    const significantChange = Math.abs(progress - lastSavedProgressRef.current) > 5;
+    const timeToSave = significantChange ? 1000 : 10000;
+    
+    progressSaveTimeoutRef.current = setTimeout(() => {
+      saveWatchProgress(progress, videoDuration);
+      progressSaveTimeoutRef.current = null;
+    }, timeToSave);
+  };
+
+  // Load watch progress on component mount
+  useEffect(() => {
+    const initializeWatchProgress = async () => {
+      const savedProgress = await loadWatchProgress();
+      if (savedProgress && savedProgress > 10) { // Show resume option if >10 seconds
+        setWatchProgress(savedProgress);
+        setShowResumeOption(true);
+      }
+    };
+    
+    initializeWatchProgress();
+  }, [videoId, loadWatchProgress]);
 
   // Use useLayoutEffect to ensure DOM is ready
   useLayoutEffect(() => {
@@ -46,10 +147,33 @@ export function VideoPlayer({ videoId, onPlay }: VideoPlayerProps) {
 
     // Video event listeners first
     const handleLoadedMetadata = () => setDuration(video.duration);
-    const handleTimeUpdate = () => setCurrentTime(video.currentTime);
+    const handleTimeUpdate = () => {
+      const currentTime = video.currentTime;
+      const duration = video.duration;
+      
+      setCurrentTime(currentTime);
+      
+      // Track watch progress for authenticated users
+      if (duration > 0 && currentTime > 0) {
+        throttledSaveProgress(currentTime, duration);
+      }
+    };
     const handlePlay = () => {
       setIsPlaying(true);
-      if (onPlay && video.currentTime === 0) onPlay();
+      
+      // Call onPlay for view increment (only once at start)
+      if (onPlay && video.currentTime === 0) {
+        onPlay();
+      }
+      
+      // Initialize watch history entry when starting to play
+      const currentTime = video.currentTime;
+      const duration = video.duration;
+      
+      if (duration > 0) {
+        // Save initial watch progress to create history entry
+        throttledSaveProgress(Math.max(currentTime, 1), duration);
+      }
     };
     const handlePause = () => setIsPlaying(false);
     const handleVolumeChange = () => {
@@ -173,6 +297,12 @@ export function VideoPlayer({ videoId, onPlay }: VideoPlayerProps) {
         timeoutRef.current = null;
       }
       
+      // Cancel progress save timeout
+      if (progressSaveTimeoutRef.current) {
+        clearTimeout(progressSaveTimeoutRef.current);
+        progressSaveTimeoutRef.current = null;
+      }
+      
       if (hlsRef.current) {
         hlsRef.current.destroy();
         hlsRef.current = null;
@@ -260,6 +390,35 @@ export function VideoPlayer({ videoId, onPlay }: VideoPlayerProps) {
         </div>
       )}
       
+      {/* Resume Watch Option */}
+      {showResumeOption && !isPlaying && (
+        <div className="absolute inset-0 bg-black/60 flex items-center justify-center z-10">
+          <div className="bg-white rounded-lg p-6 text-center max-w-sm mx-4">
+            <h3 className="text-lg font-semibold text-gray-900 mb-2">Resume Watching</h3>
+            <p className="text-gray-600 mb-4">
+              Continue from {Math.floor(watchProgress / 60)}:{(Math.floor(watchProgress % 60)).toString().padStart(2, '0')}
+            </p>
+            <div className="flex gap-3 justify-center">
+              <button
+                onClick={handleResumePlayback}
+                className="px-4 py-2 bg-primary text-white rounded hover:bg-primary/90 transition-colors"
+              >
+                Resume
+              </button>
+              <button
+                onClick={() => {
+                  setShowResumeOption(false);
+                  togglePlay(); // Start from beginning
+                }}
+                className="px-4 py-2 bg-gray-200 text-gray-800 rounded hover:bg-gray-300 transition-colors"
+              >
+                Start Over
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Video Controls */}
       <div className={`absolute inset-0 transition-opacity duration-300 ${showControls || !isPlaying ? 'opacity-100' : 'opacity-0'}`}>
         {/* Play/Pause overlay */}

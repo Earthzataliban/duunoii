@@ -794,4 +794,115 @@ export class VideosService {
       message: `Comment deleted along with ${comment._count.replies} replies`,
     };
   }
+
+  async saveWatchProgress(
+    videoId: string,
+    userId: string,
+    progress: number,
+    duration: number,
+  ) {
+    // Validate video exists
+    const video = await this.prisma.video.findUnique({
+      where: { id: videoId },
+    });
+
+    if (!video) {
+      throw new NotFoundException('Video not found');
+    }
+
+    // Don't save very short watches or invalid progress
+    if (progress < 1 || duration < 5 || progress > duration + 10) {
+      // Allow some buffer for duration
+      return { success: false, message: 'Invalid watch progress' };
+    }
+
+    // Upsert watch history
+    const watchHistory = await this.prisma.viewHistory.upsert({
+      where: {
+        userId_videoId: {
+          userId,
+          videoId,
+        },
+      },
+      update: {
+        progress: Math.floor(progress),
+        watchedAt: new Date(),
+      },
+      create: {
+        userId,
+        videoId,
+        progress: Math.floor(progress),
+        watchedAt: new Date(),
+      },
+    });
+
+    return {
+      success: true,
+      progress: watchHistory.progress,
+      watchedAt: watchHistory.watchedAt,
+    };
+  }
+
+  async getWatchProgress(videoId: string, userId: string) {
+    // Validate video exists
+    const video = await this.prisma.video.findUnique({
+      where: { id: videoId },
+    });
+
+    if (!video) {
+      throw new NotFoundException('Video not found');
+    }
+
+    // Get watch history
+    const watchHistory = await this.prisma.viewHistory.findUnique({
+      where: {
+        userId_videoId: {
+          userId,
+          videoId,
+        },
+      },
+    });
+
+    if (!watchHistory) {
+      return {
+        progress: 0,
+        watchedAt: null,
+        hasWatched: false,
+      };
+    }
+
+    return {
+      progress: watchHistory.progress,
+      watchedAt: watchHistory.watchedAt,
+      hasWatched: true,
+    };
+  }
+
+  async removeWatchProgress(videoId: string, userId: string) {
+    // Validate video exists
+    const video = await this.prisma.video.findUnique({
+      where: { id: videoId },
+    });
+
+    if (!video) {
+      throw new NotFoundException('Video not found');
+    }
+
+    // Delete watch history entry
+    const deleted = await this.prisma.viewHistory.deleteMany({
+      where: {
+        userId,
+        videoId,
+      },
+    });
+
+    return {
+      success: true,
+      message:
+        deleted.count > 0
+          ? 'Removed from watch history'
+          : 'Video was not in watch history',
+      removed: deleted.count > 0,
+    };
+  }
 }

@@ -44,7 +44,7 @@ export class UsersController {
     };
   }
 
-  @Get(':username')
+  @Get('profile/:username')
   async getUserProfile(@Param('username') username: string) {
     const user = await this.usersService.findByUsername(username);
     if (!user) {
@@ -55,9 +55,17 @@ export class UsersController {
       id: user.id,
       username: user.username,
       displayName: user.displayName,
+      firstName: user.firstName,
+      lastName: user.lastName,
       avatar: user.avatar,
       createdAt: user.createdAt,
+      email: user.email, // Include for frontend compatibility
     };
+  }
+
+  @Get(':id/stats')
+  async getUserStats(@Param('id') userId: string) {
+    return this.usersService.getUserStats(userId);
   }
 
   @UseGuards(JwtAuthGuard)
@@ -157,5 +165,27 @@ export class UsersController {
       parsedPage,
       parsedLimit,
     );
+  }
+
+  @Get('me/watch-history')
+  @UseGuards(JwtAuthGuard)
+  async getMyWatchHistory(
+    @Request() req: AuthenticatedRequest,
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+  ) {
+    const parsedPage = page ? parseInt(page) || 1 : 1;
+    const parsedLimit = limit ? parseInt(limit) || 20 : 20;
+    return this.usersService.getWatchHistory(
+      req.user.userId,
+      parsedPage,
+      parsedLimit,
+    );
+  }
+
+  @Delete('me/watch-history')
+  @UseGuards(JwtAuthGuard)
+  async clearWatchHistory(@Request() req: AuthenticatedRequest) {
+    return this.usersService.clearWatchHistory(req.user.userId);
   }
 }

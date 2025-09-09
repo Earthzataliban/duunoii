@@ -262,4 +262,98 @@ export class UsersService {
       },
     };
   }
+
+  async getUserStats(userId: string) {
+    // Check if user exists
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+    });
+
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
+    // Get parallel stats
+    const [videoCount, totalViews, subscriberCount] = await Promise.all([
+      // Count user's videos
+      this.prisma.video.count({
+        where: {
+          uploaderId: userId,
+          status: 'READY', // Only count ready videos
+        },
+      }),
+      // Sum total views from all user's videos
+      this.prisma.video.aggregate({
+        where: {
+          uploaderId: userId,
+          status: 'READY',
+        },
+        _sum: {
+          views: true,
+        },
+      }),
+      // Count subscribers
+      this.prisma.subscription.count({
+        where: { subscribedToId: userId },
+      }),
+    ]);
+
+    return {
+      videoCount,
+      totalViews: totalViews._sum.views || 0,
+      subscriberCount,
+      userId,
+    };
+  }
+
+  async getWatchHistory(userId: string, page = 1, limit = 20) {
+    const offset = (page - 1) * limit;
+
+    const [history, total] = await Promise.all([
+      this.prisma.viewHistory.findMany({
+        where: { userId },
+        include: {
+          video: {
+            include: {
+              uploader: {
+                select: {
+                  id: true,
+                  username: true,
+                },
+              },
+            },
+          },
+        },
+        orderBy: { watchedAt: 'desc' },
+        skip: offset,
+        take: limit,
+      }),
+      this.prisma.viewHistory.count({
+        where: { userId },
+      }),
+    ]);
+
+    return {
+      history,
+      pagination: {
+        total,
+        page,
+        limit,
+        totalPages: Math.ceil(total / limit),
+      },
+      hasMore: page * limit < total,
+    };
+  }
+
+  async clearWatchHistory(userId: string) {
+    const deletedCount = await this.prisma.viewHistory.deleteMany({
+      where: { userId },
+    });
+
+    return {
+      success: true,
+      message: `Cleared ${deletedCount.count} items from watch history`,
+      deletedCount: deletedCount.count,
+    };
+  }
 }

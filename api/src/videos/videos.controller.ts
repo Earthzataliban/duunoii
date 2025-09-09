@@ -275,6 +275,39 @@ export class VideosController {
     return this.videosService.deleteComment(commentId, req.user.userId);
   }
 
+  @Post(':id/watch-progress')
+  @UseGuards(JwtAuthGuard)
+  async saveWatchProgress(
+    @Param('id') videoId: string,
+    @Body() body: { progress: number; duration: number },
+    @Request() req: AuthenticatedRequest,
+  ) {
+    return this.videosService.saveWatchProgress(
+      videoId,
+      req.user.userId,
+      body.progress,
+      body.duration,
+    );
+  }
+
+  @Get(':id/watch-progress')
+  @UseGuards(JwtAuthGuard)
+  async getWatchProgress(
+    @Param('id') videoId: string,
+    @Request() req: AuthenticatedRequest,
+  ) {
+    return this.videosService.getWatchProgress(videoId, req.user.userId);
+  }
+
+  @Delete(':id/watch-progress')
+  @UseGuards(JwtAuthGuard)
+  async removeWatchProgress(
+    @Param('id') videoId: string,
+    @Request() req: AuthenticatedRequest,
+  ) {
+    return this.videosService.removeWatchProgress(videoId, req.user.userId);
+  }
+
   @Post(':id/regenerate-hls')
   @UseGuards(JwtAuthGuard)
   async regenerateHLS(@Param('id') id: string) {
