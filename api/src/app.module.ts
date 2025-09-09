@@ -7,6 +7,7 @@ import { AuthModule } from './auth/auth.module';
 import { UsersModule } from './users/users.module';
 import { PrismaModule } from './prisma/prisma.module';
 import { VideosModule } from './videos/videos.module';
+import { PlaylistsModule } from './playlists/playlists.module';
 
 @Module({
   imports: [
@@ -24,6 +25,7 @@ import { VideosModule } from './videos/videos.module';
     AuthModule,
     UsersModule,
     VideosModule,
+    PlaylistsModule,
   ],
   controllers: [AppController],
   providers: [AppService],

@@ -14,7 +14,8 @@ import {
   ThumbsUp,
   X,
   Upload,
-  BarChart3
+  BarChart3,
+  Music
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -32,6 +33,7 @@ const mainNavItems = [
 
 const libraryItems = [
   { href: '/library', label: 'Library', icon: BookOpen },
+  { href: '/playlists', label: 'Playlists', icon: Music },
   { href: '/history', label: 'History', icon: History },
   { href: '/watch-later', label: 'Watch later', icon: Clock },
   { href: '/liked', label: 'Liked videos', icon: ThumbsUp },
